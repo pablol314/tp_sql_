@@ -50,3 +50,12 @@ SELECT * FROM vw_inventario_resumido LIMIT 10;
 INSERT INTO producto (id, nombre, categoria_id, marca_id, precio, costo, stock)
 VALUES (1, 'Producto con PK duplicada', 1, 1, 500.00, 300.00, 10);
 
+INSERT INTO producto (nombre, categoria_id, marca_id, precio, costo, stock)
+VALUES ('Producto con FK inválida', 99999, 1, 500.00, 300.00, 10);
+
+INSERT INTO producto (nombre, categoria_id, marca_id, precio, costo, stock)
+VALUES ('Producto con margen negativo', 1, 1, 300.00, 500.00, 10);
+
+INSERT INTO producto (nombre, categoria_id, marca_id, precio, costo, stock)
+VALUES ('   ', 1, 1, 500.00, 300.00, 10);
+
