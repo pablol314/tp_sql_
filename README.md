@@ -91,11 +91,9 @@ Opcional: ejecutar `EXPLAIN` sobre consultas de JOIN para comparar tiempos con/s
 
 - [x] `SQL_etapa4_seguridad.sql` (usuario + vistas seguras + pruebas integridad)
 - [x] `ProductoDAO.java` (código Java con PreparedStatement)
-- [x] `TestSQLInjection.java` (prueba anti-inyección documentada)
 - [x] `ENTREGABLES_ETAPA4.md` (documentación completa)
-- [ ] Capturas de errores de constraints (PK, FK, UNIQUE, CHECK)
+- [ ] Capturas de errores de constraints
 - [ ] Capturas de prueba de acceso restringido (app_user)
-- [ ] Salida del test de SQL Injection
 
 ### Etapa 5 (pendiente)
 
