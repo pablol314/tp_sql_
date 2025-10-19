@@ -44,7 +44,7 @@ FROM producto p
 JOIN marca m ON m.id = p.marca_id
 GROUP BY m.nombre
 -- Filtra grupos: Margen > 300 Y (AND) Total de productos > 5
-HAVING Margen_Promedio > 300 AND COUNT(p.id) > 5
+HAVING Margen_Promedio > 30 AND COUNT(p.id) > 5
 ORDER BY Margen_Promedio DESC;
 
 
