@@ -9,7 +9,7 @@ public class PreparedStatementsDemo {
      * Constructor que recibe una conexión a la DB de SQL
      * 
      */
-    public ProductoDAO(Connection connection) {
+    public PreparedStatementsDemo(Connection connection) {
         this.connection = connection;
     }
     
