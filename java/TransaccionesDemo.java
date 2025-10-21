@@ -5,7 +5,7 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.DriverManager;
 
-public class TransaccionService {
+public class TransaccionesDemo {
 
     private static final String DB_URL = "jdbc:mysql://localhost:3306/producto_barras";
      private static final String USER = "root"; 

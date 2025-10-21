@@ -2,7 +2,7 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
-public class ProductoDAO {    
+public class PreparedStatementsDemo {    
     private Connection connection;
     
     /**
