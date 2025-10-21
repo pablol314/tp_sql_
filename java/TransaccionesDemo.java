@@ -8,7 +8,7 @@ import java.sql.DriverManager;
 public class TransaccionesDemo {
 
     private static final String DB_URL = "jdbc:mysql://localhost:3306/producto_barras";
-     private static final String USER = "root"; 
+    private static final String USER = "root";
     private static final String PASS = "1996"; 
   
 
@@ -81,8 +81,8 @@ public class TransaccionesDemo {
     
     public static void main(String[] args) {
         // Ejemplo de uso: transferir 10 unidades del producto 1 al producto 2
-        TransaccionService service = new TransaccionService();
-        service.transferirStock(1, 2, 10);
+        TransaccionesDemo demo = new TransaccionesDemo();
+        demo.transferirStock(1, 2, 10);
         
         // Ejemplo de uso que falla (asumiendo stock insuficiente, o forzando un error en el código)
         // service.transferirStock(1, 2, 999999);
