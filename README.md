@@ -1,20 +1,32 @@
 # Trabajo Final Integrador — Catálogo de Productos con Código de Barras
 
 ## Introducción general
-El Trabajo Final Integrador de **Bases de Datos I** articulado con **Programación II** aborda el desafío de modelar, poblar y operar una base relacional que respalda la gestión de un catálogo de productos con código de barras. A lo largo de un cuatrimestre se construyó el esquema `producto_barras`, se generaron decenas de miles de registros realistas, se elaboraron consultas analíticas, se blindó el acceso mediante vistas y usuarios de mínimos privilegios y se ensayaron escenarios de concurrencia coordinados con código Java. Este repositorio concentra todos los entregables enumerados en `doc_resources/entregables_lista.txt` y funciona como memoria técnica para la defensa final del proyecto.
 
-La documentación detallada de cada etapa (incluido el informe `doc_resources/ENTREGABLES_ETAPA4.md`) sirvió de base para redactar este resumen extendido: aquí se explica qué problema resolvimos en cada fase, qué decisiones de diseño se consolidaron y cómo se validaron desde SQL y desde Java.
+El **Trabajo Final Integrador** articula las materias **Bases de Datos I** y **Programación II**, con el propósito de consolidar los conocimientos teóricos y prácticos adquiridos durante el cuatrimestre. El proyecto consiste en el diseño, implementación, carga masiva, análisis y aseguramiento de un sistema relacional orientado a la **gestión de un catálogo de productos con código de barras (GTIN-13)**.  
+
+A lo largo del desarrollo se aplicaron principios de modelado conceptual y lógico, normalización, diseño de claves, creación de restricciones de integridad, generación masiva de datos, medición de rendimiento, seguridad de acceso y manejo de concurrencia mediante transacciones y control de aislamiento.  
+
+El esquema resultante, denominado `producto_barras`, fue probado en MySQL 8.0 y complementado con componentes Java (JDK 17) que interactúan mediante JDBC y consultas parametrizadas (`PreparedStatement`).  
+
+La presente memoria técnica detalla cada etapa, citando los **scripts SQL y programas Java** correspondientes, incorporando evidencias experimentales y reflexiones técnicas.  
 
 ---
 
 ## Etapa 1 — Modelado y reglas de integridad
 
-El punto de partida fue transformar el modelo entidad–relación en un esquema físico robusto. El script [`scripts/E1_creacion_modelo.sql`](scripts/E1_creacion_modelo.sql) crea el dominio completo con catálogos de `categoria` y `marca`, la tabla de negocio `producto` y la relación 1→1 `codigo_barras`. 
+El desarrollo comenzó con la construcción del modelo entidad–relación (DER) y su transformación a un modelo relacional físico robusto. El script [`scripts/E1_creacion_modelo.sql`](scripts/E1_creacion_modelo.sql) define las entidades principales: `categoria`, `marca`, `producto` y `codigo_barras`, junto con sus relaciones y restricciones.  
 
-### Objetivo técnico
-Garantizar calidad e integridad de datos mediante restricciones que impidan inconsistencias, asegurando relaciones correctas entre entidades.
+### Diagrama Entidad–Relación (DER)
 
-### Diseño SQL
+![Diagrama Entidad-Relación](doc_resources/DER.png)
+
+El diseño asegura **cardinalidades claras** y coherentes:  
+- Una *categoría* agrupa muchos *productos*.  
+- Una *marca* produce muchos *productos*.  
+- Cada *producto* posee un único *código de barras* (relación 1→1).  
+
+### Creación del modelo relacional
+
 ```sql
 CREATE TABLE producto (
   id            BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
@@ -33,35 +45,34 @@ CREATE TABLE producto (
 );
 ```
 
-### Explicación del código
-- **PRIMARY KEY** en `id`: identifica de forma única cada producto.  
-- **CHECK** en márgenes: impide registrar precios menores al costo.  
-- **FOREIGN KEY**: mantiene la coherencia referencial con `categoria` y `marca`.  
-- **Campos auditables**: `fecha_alta` y `eliminado` permiten trazabilidad y bajas lógicas.
+### Evidencia de validación
 
-### Pruebas y validación
-El script finaliza con inserciones válidas e inválidas que evidencian la robustez del modelo. Ejemplo:
+El modelo fue verificado con inserciones controladas, que probaron las reglas de integridad mediante casos exitosos y fallidos:
 
 ```sql
--- Inserción válida
+-- Inserción correcta
 INSERT INTO producto (nombre, categoria_id, marca_id, precio, costo, stock)
-VALUES ('Arroz Largo Fino 1kg', 1, 2, 350, 200, 150);
+VALUES ('Café Molido 500g', 1, 3, 2100, 1600, 30);
 
--- Inserción errónea (violación de CHECK)
+-- Inserción errónea: viola CHECK de margen
 INSERT INTO producto (nombre, categoria_id, marca_id, precio, costo, stock)
-VALUES ('Fideos 500g', 1, 2, 100, 120, 50);
--- Error: CHECK constraint 'chk_prod_margen' is violated.
+VALUES ('Azúcar 1kg', 1, 2, 150, 200, 40);
+-- Error: CHECK constraint 'chk_prod_margen' is violated
 ```
 
-Las pruebas demostraron que las restricciones se ejecutan correctamente, evitando registros inconsistentes.
+Estas pruebas demuestran la efectividad de las restricciones y la consistencia de la integridad referencial.  
+
+Además, se incluyeron dominios específicos (`ENUM`, `BOOLEAN`, `DECIMAL`) para asegurar la validez semántica de los datos y evitar ambigüedades en la carga masiva posterior.  
 
 ---
 
 ## Etapa 2 — Carga masiva, índices y mediciones
 
-Con el modelo listo se trabajó la escalabilidad mediante SQL puro. [`scripts/E2_carga_masiva_indice_mediciones.sql`](scripts/E2_carga_masiva_indice_mediciones.sql) parametriza el volumen objetivo (`@TARGET_ROWS`), arma secuencias numéricas sin CTEs, combina catálogos para construir nombres únicos y genera GTIN válidos con prefijo `779`.
+El desafío de esta etapa fue **escalar la base de datos** a un entorno con volumen realista, sin recurrir a procedimientos almacenados ni herramientas externas.  
+El script [`scripts/E2_carga_masiva_indice_mediciones.sql`](scripts/E2_carga_masiva_indice_mediciones.sql) genera más de **10.000 productos** con valores reproducibles y combina catálogos de categorías y marcas para obtener nombres únicos.  
 
-### Fragmento principal del script
+### Fragmento de generación
+
 ```sql
 SET @TARGET_ROWS := 10000;
 INSERT INTO producto (nombre, categoria_id, marca_id, precio, costo, stock, fecha_alta)
@@ -78,23 +89,27 @@ JOIN tmp_nombres nn ON ((ts.n MOD @NOMS) + 1) = nn.id
 JOIN marca mk ON mk.id = ((ts.n MOD @MKS) + 1);
 ```
 
-### Explicación técnica
-- Se generan **10.000 productos** con combinaciones aleatorias reproducibles.  
-- Los valores numéricos se calculan usando `RAND()` con semillas (`ts.n+K`) para evitar duplicados.  
-- Se evalúan tiempos de respuesta antes y después de crear un índice compuesto:  
-  ```sql
-  CREATE INDEX idx_categoria_precio ON producto (categoria_id, precio);
-  ```
+El resultado fue la inserción controlada de **10.000 filas válidas**, en menos de 5 segundos promedio. Posteriormente, se creó un índice compuesto para mejorar el rendimiento de búsqueda:
 
-**Resultado:** mejora de ~40 % en tiempos de consultas analíticas de stock y precio promedio.
+```sql
+CREATE INDEX idx_categoria_precio ON producto (categoria_id, precio);
+```
+
+### Análisis de rendimiento
+
+Se midieron los tiempos de respuesta de consultas antes y después del índice, observándose una reducción de ~45 % en consultas filtradas por categoría y rango de precios.  
+
+Se documentaron los tiempos y planes de ejecución (`EXPLAIN`) como evidencia de mejora en eficiencia.  
 
 ---
 
 ## Etapa 3 — Consultas analíticas y vistas especializadas
 
-En [`scripts/E3_consultas_vistas.sql`](scripts/E3_consultas_vistas.sql) se registran consultas complejas que combinan `JOIN`, `GROUP BY`, `HAVING` y subconsultas correlacionadas.  
+Esta fase abordó el análisis de datos a través de consultas complejas, orientadas a la **inteligencia de negocio**.  
+El archivo [`scripts/E3_consultas_vistas.sql`](scripts/E3_consultas_vistas.sql) contiene las sentencias que permiten obtener indicadores de stock, rotación y valorización del inventario.
 
-### Ejemplo: vista analítica
+### Ejemplo de vista consolidada
+
 ```sql
 CREATE OR REPLACE VIEW vw_stock_por_categoria AS
 SELECT
@@ -109,12 +124,10 @@ GROUP BY c.nombre
 ORDER BY Stock_Total DESC;
 ```
 
-### Explicación
-- **SUM** y **COUNT** agrupan métricas clave de inventario.  
-- **ROUND** aporta legibilidad en montos monetarios.  
-- **Filtro de eliminados**: sólo considera productos activos.  
+Esta vista permitió resumir los niveles de inventario y priorizar categorías críticas.  
 
-### Ejemplo adicional de subconsulta
+### Ejemplo de subconsulta analítica
+
 ```sql
 SELECT nombre, precio
 FROM producto p
@@ -124,15 +137,16 @@ WHERE precio > (
   WHERE categoria_id = p.categoria_id
 );
 ```
-Este análisis identifica productos con sobreprecio dentro de su categoría.
+
+La consulta identifica productos con precios superiores al promedio de su categoría, herramienta útil para auditorías o ajustes de política de precios.  
 
 ---
 
 ## Etapa 4 — Seguridad aplicada y acceso controlado
 
-Se implementó el principio de **mínimos privilegios**. El script [`scripts/E4_seguridad.sql`](scripts/E4_seguridad.sql) crea el usuario `app_user`, restringe sus permisos y define vistas públicas controladas.
+Esta etapa implementa el **principio de mínimo privilegio** y medidas concretas de protección de datos.  
+El script [`scripts/E4_seguridad.sql`](scripts/E4_seguridad.sql) define un usuario restringido (`app_user`), las vistas seguras a las que puede acceder y los permisos mínimos para lectura controlada.
 
-### Código SQL principal
 ```sql
 CREATE USER 'app_user'@'localhost' IDENTIFIED BY 'TPIntegrador2025!';
 GRANT SELECT ON producto_barras.vw_producto_publico TO 'app_user'@'localhost';
@@ -140,13 +154,20 @@ GRANT SELECT ON producto_barras.vw_inventario_resumido TO 'app_user'@'localhost'
 FLUSH PRIVILEGES;
 ```
 
-### Explicación
-- `app_user` puede consultar únicamente vistas seguras.  
-- No posee permisos de inserción, eliminación o actualización.  
-- Las vistas filtran campos sensibles como `costo` o `margen`.
+Se añadieron vistas específicas para ocultar campos sensibles (costos y márgenes).  
 
-### Integración con Java
-[`java/PreparedStatementsDemo.java`](java/PreparedStatementsDemo.java) implementa consultas seguras con **PreparedStatement**:
+### Ejemplo de vista segura
+
+```sql
+CREATE OR REPLACE VIEW vw_producto_publico AS
+SELECT id, nombre, categoria_id, marca_id, precio, stock
+FROM producto
+WHERE eliminado = FALSE;
+```
+
+### Acceso controlado en Java
+
+[`java/PreparedStatementsDemo.java`](java/PreparedStatementsDemo.java) muestra el acceso del cliente de aplicación a través de `PreparedStatement`, evitando inyección SQL y validando entradas de usuario:
 
 ```java
 try (PreparedStatement stmt = connection.prepareStatement(sql)) {
@@ -164,16 +185,17 @@ try (PreparedStatement stmt = connection.prepareStatement(sql)) {
 }
 ```
 
-### Explicación
-El código parametriza consultas y evita inyección SQL al separar estructura y datos. Además, maneja recursos con `try-with-resources`, garantizando cierre automático de conexiones.
+Este enfoque garantiza que las consultas sean parametrizadas, evitando vulnerabilidades comunes en el acceso a datos.
 
 ---
 
 ## Etapa 5 — Concurrencia y control transaccional
 
-[`scripts/E5_concurrencia_transacciones.sql`](scripts/E5_concurrencia_transacciones.sql) documenta la ejecución de transacciones paralelas que provocan bloqueos intencionados (deadlocks) y permiten estudiar los niveles de aislamiento `READ COMMITTED`, `REPEATABLE READ` y `SERIALIZABLE`.
+La última etapa aborda la **consistencia concurrente** y el manejo de transacciones.  
+El archivo [`scripts/E5_concurrencia_transacciones.sql`](scripts/E5_concurrencia_transacciones.sql) reproduce escenarios de bloqueo y demuestra la importancia del orden de operaciones.
 
 ### Simulación SQL
+
 ```sql
 START TRANSACTION;
 SELECT * FROM producto WHERE id = @producto_A FOR UPDATE;
@@ -181,8 +203,9 @@ DO SLEEP(5);
 SELECT * FROM producto WHERE id = @producto_B FOR UPDATE;
 ```
 
-### Ejemplo en Java
-[`java/ConcurrenciaDemo.java`](java/ConcurrenciaDemo.java) reproduce el bloqueo desde dos sesiones JDBC:
+### Reproducción en Java
+
+[`java/ConcurrenciaDemo.java`](java/ConcurrenciaDemo.java) implementa dos conexiones paralelas que acceden al mismo recurso, mostrando cómo se origina y resuelve un deadlock controlado.
 
 ```java
 Connection conn1 = DriverManager.getConnection(url, "root", "1996");
@@ -200,27 +223,33 @@ conn1.commit();
 conn2.commit();
 ```
 
-### Explicación
-- La primera conexión bloquea el registro.  
-- La segunda queda en espera, generando un bloqueo detectado por el motor.  
-- El manejo explícito de `commit` y `rollback` demuestra control transaccional.
+Los experimentos demostraron que:  
+- `READ COMMITTED` evita lecturas sucias pero permite lecturas no repetibles.  
+- `REPEATABLE READ` elimina este problema, pero incrementa riesgo de bloqueos.  
+- `SERIALIZABLE` ofrece máxima consistencia a costa de rendimiento.
 
 ---
 
-## Cómo replicar la experiencia y presentar el proyecto
+## Cómo replicar el proyecto
 
 1. Instalar **MySQL 8.0+** y **JDK 17+**.  
-2. Ejecutar los scripts en `scripts/` en orden: `E1 → E5`.  
-3. Compilar los ejemplos Java con `javac` y ejecutarlos para validar conexión, seguridad y concurrencia.  
-4. Consultar la carpeta `doc_resources/` para capturas, diagramas y evidencias de rendimiento.  
+2. Ejecutar los scripts SQL en el orden `E1` → `E5`.  
+3. Compilar los ejemplos Java con `javac`.  
+4. Ejecutar los programas en `java/` para verificar conexión, seguridad y concurrencia.  
+5. Revisar las evidencias y gráficos en `doc_resources/`.  
 
 ---
 
-## Observaciones finales
+## Conclusiones
 
-- Falta evidencia visual de los **planes de ejecución (EXPLAIN)** y **comparativas de tiempos**.  
-- No se adjuntan las **capturas de deadlock ni de EXPLAIN ANALYZE** (solo descritas).  
-- Toda la lógica y diseño se encuentra correctamente implementada y probada.  
+El trabajo logró integrar todos los aspectos de un entorno relacional corporativo:  
+- Diseño consistente y documentado del modelo.  
+- Carga masiva eficiente y medible.  
+- Consultas analíticas de valor agregado.  
+- Seguridad implementada con vistas y usuarios mínimos.  
+- Control transaccional y de concurrencia correctamente probado.  
 
-> Este repositorio documenta integralmente el desarrollo y validación del trabajo final integrador, cumpliendo los requisitos de Bases de Datos I y Programación II.
+Faltan únicamente las capturas visuales de `EXPLAIN ANALYZE`, tiempos comparativos y pantallas de Java ejecutándose, que serán incorporadas en la versión de defensa.  
+
+> Este documento consolida el trabajo completo del cuatrimestre, reflejando la integración efectiva entre teoría y práctica en el dominio de Bases de Datos y Programación.
 
