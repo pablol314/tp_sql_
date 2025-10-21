@@ -72,6 +72,16 @@ FROM tmp_digit e
 CROSS JOIN v_seq_0_9999 s;
 
 
+/* =========================
+   3) TABLA TEMPORAL DE NOMBRES (idempotente)
+   ========================= */
+CREATE TABLE IF NOT EXISTS tmp_nombres (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  base VARCHAR(255) NOT NULL
+) ENGINE=Memory;
+
+TRUNCATE TABLE tmp_nombres;
+
 INSERT INTO tmp_nombres (base) VALUES
  ('Galletas de agua'), ('Galletas dulces'), ('Yerba mate'), ('Azúcar'),
  ('Arroz largo fino'), ('Harina 0000'), ('Leche entera 1L'), ('Leche descremada 1L'),
