@@ -1,0 +1,31 @@
+TP_BASE_DE_DATOS/
+│
+├─ scripts/
+│   ├─ 01_creacion_modelo.sql               # Script de creación del modelo relacional
+│   ├─ 02_carga_masiva.sql                  # Script de inserción masiva (≥10.000 registros)
+│   ├─ 03_indices_y_mediciones.sql          # Creación de índices y consultas para medir rendimiento
+│   ├─ 04_consultas_y_vistas.sql            # Consultas complejas (JOIN, GROUP BY, HAVING) y vistas
+│   ├─ 05_seguridad.sql                     # Creación de usuario limitado, permisos, vistas
+│   ├─ 06_pruebas_concurrencia.sql          # Scripts SQL para bloquear, deadlocks y aislamiento
+│   ├─ 07_transacciones.sql                 # Pruebas de transacciones BEGIN/COMMIT/ROLLBACK
+│
+├─ java/
+│   ├─ SimpleConnection.java                # Código básico JDBC (conexión)
+│   ├─ PreparedStatementsDemo.java          # Ejemplo consultas parametrizadas
+│   ├─ TransaccionesDemo.java               # Ejemplo transacciones con rollback
+│   └─ ConcurrenciaDemo.java                # Ejemplo pruebas de concurrencia en Java
+│
+├─ sandbox/
+│   ├─ generate_toy_data.py                 # Script Python para generar datos toy-example
+│   └─ toy_example.xlsx                     # Datos de ejemplo pequeños para pruebas
+│
+├─ doc_resources/
+│   ├─ DER.png                              # Diagrama Entidad-Relación
+│   ├─ ModeloRelacional.pdf                 # Modelo lógico detallado
+│   ├─ evidencias_rendimiento.pdf           # Capturas de mediciones con/sin índices
+│   ├─ evidencias_consultas.pdf             # Capturas de resultados de consultas y vistas
+│   ├─ evidencias_concurrencia.pdf          # Capturas de bloqueos / aislamiento
+│   ├─ informe_resultados.pdf               # Informe breve con conclusiones
+│   └─ evidencia_IA.pdf                     # Evidencia del uso de IA (capturas/chat)
+│
+└─ README.md                               # Instrucciones generales para ejecutar scripts y pruebas

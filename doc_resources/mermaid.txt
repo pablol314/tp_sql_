@@ -1,0 +1,35 @@
+erDiagram
+    CATEGORIA {
+        BIGINT id PK
+        VARCHAR nombre
+        VARCHAR descripcion
+        BOOLEAN eliminado
+    }
+
+    MARCA {
+        BIGINT id PK
+        VARCHAR nombre
+        BOOLEAN eliminado
+    }
+
+    PRODUCTO {
+        BIGINT id PK
+        VARCHAR nombre
+        BIGINT categoria_id FK
+        BIGINT marca_id FK
+        DECIMAL precio
+        DECIMAL costo
+        DATE fecha_alta
+        BOOLEAN eliminado
+    }
+
+    CODIGO_BARRAS {
+        BIGINT producto_id PK,FK
+        CHAR gtin13
+        ENUM tipo
+        BOOLEAN activo
+    }
+
+    CATEGORIA ||--o{ PRODUCTO : "contiene"
+    MARCA ||--o{ PRODUCTO : "pertenece a"
+    PRODUCTO ||--|| CODIGO_BARRAS : "1 a 1"
