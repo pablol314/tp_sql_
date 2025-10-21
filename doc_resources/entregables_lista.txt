@@ -1,26 +1,22 @@
 TP_BASE_DE_DATOS/
-│
-├─ scripts/
-│   ├─ E1_creacion_modelo.sql              # Script de creación del modelo relacional
-│   ├─ E2_carga_masiva_indice_mediciones.sql                  # Script de inserción masiva (≥10.000 registros) + indice y mediciones
-│   ├─ E2_vistas_testing.sql                # Validar carga masiva
-│   ├─ E3_consultas_vistas.sql              # Consultas complejas (JOIN, GROUP BY, HAVING) y vistas
-│   ├─ E4_seguridad.sql                     # Creación de usuario limitado, permisos, vistas
-│   ├─ E5_concurrencia_transacciones.sql    # Scripts SQL para bloquear, deadlocks y aislamiento +Pruebas de transacciones BEGIN/COMMIT/ROLLBACK
-│
-├─ java/
-│   ├─ SimpleConnection.java                # Código básico JDBC (conexión)
-│   ├─ PreparedStatementsDemo.java          # Ejemplo consultas parametrizadas
-│   ├─ TransaccionesDemo.java               # Ejemplo transacciones con rollback
-│   └─ ConcurrenciaDemo.java                # Ejemplo pruebas de concurrencia en Java
-││
-├─ doc_resources/
-│   ├─ DER.png                              # Diagrama Entidad-Relación
-│   ├─ ModeloRelacional.pdf                 # Modelo lógico detallado
-│   ├─ evidencias_rendimiento.pdf           # Capturas de mediciones con/sin índices
-│   ├─ evidencias_consultas.pdf             # Capturas de resultados de consultas y vistas
-│   ├─ evidencias_concurrencia.pdf          # Capturas de bloqueos / aislamiento
-│   ├─ informe_resultados.pdf               # Informe breve con conclusiones
-│   └─ evidencia_IA.pdf                     # Evidencia del uso de IA (capturas/chat)
-│
-└─ README.md                               # Instrucciones generales para ejecutar scripts y pruebas
+- README.md
+- scripts/
+  - E1_creacion_modelo.sql
+  - E2_carga_masiva_indice_mediciones.sql
+  - E2_vistas_testing.sql
+  - E3_consultas_vistas.sql
+  - E4_seguridad.sql
+  - E5_concurrencia_transacciones.sql
+- java/
+  - ConcurrenciaDemo.java
+  - PreparedStatementsDemo.java
+  - SimpleConnection.java
+  - TransaccionesDemo.java
+- doc_resources/
+  - DER.png
+  - ENTREGABLES_ETAPA4.md
+  - evidencia_check_errores.png
+  - evidencias_rendimiento.md
+  - evidencia_uso_ia.md
+  - ejemplo_entrega_final.txt
+  - mermaid_DER.txt
