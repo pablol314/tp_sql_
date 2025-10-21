@@ -69,7 +69,7 @@ Además, se incluyeron dominios específicos (`ENUM`, `BOOLEAN`, `DECIMAL`) para
 ## Etapa 2 — Carga masiva, índices y mediciones
 
 El desafío de esta etapa fue **escalar la base de datos** a un entorno con volumen realista, sin recurrir a procedimientos almacenados ni herramientas externas.  
-El script [`scripts/E2_carga_masiva_indice_mediciones.sql`](scripts/E2_carga_masiva_indice_mediciones.sql) genera más de **10.000 productos** con valores reproducibles y combina catálogos de categorías y marcas para obtener nombres únicos.  
+El script [`scripts/E2_carga_masiva_indice_mediciones.sql`](scripts/E2_carga_masiva_indice_mediciones.sql) permite generar **miles de productos** con valores reproducibles y combina catálogos de categorías y marcas para obtener nombres únicos.
 
 ### Fragmento de generación
 
@@ -89,17 +89,15 @@ JOIN tmp_nombres nn ON ((ts.n MOD @NOMS) + 1) = nn.id
 JOIN marca mk ON mk.id = ((ts.n MOD @MKS) + 1);
 ```
 
-El resultado fue la inserción controlada de **10.000 filas válidas**, en menos de 5 segundos promedio. Posteriormente, se creó un índice compuesto para mejorar el rendimiento de búsqueda:
+El bloque también incorpora la creación de un índice compuesto para optimizar búsquedas filtradas por categoría y rango de precios:
 
 ```sql
-CREATE INDEX idx_categoria_precio ON producto (categoria_id, precio);
+CREATE INDEX ix_prod_categoria_precio ON producto (categoria_id, precio);
 ```
 
-### Análisis de rendimiento
+### Evidencias de rendimiento
 
-Se midieron los tiempos de respuesta de consultas antes y después del índice, observándose una reducción de ~45 % en consultas filtradas por categoría y rango de precios.  
-
-Se documentaron los tiempos y planes de ejecución (`EXPLAIN`) como evidencia de mejora en eficiencia.  
+Las mediciones (`sin índice` vs `con índice`) y el `EXPLAIN` asociado se documentan en [`doc_resources/evidencias_rendimiento.md`](doc_resources/evidencias_rendimiento.md). En el entorno de trabajo utilizado para esta entrega no fue posible ejecutar MySQL (no se dispone del binario ni es posible instalarlo por políticas de red), por lo que el archivo describe los intentos realizados y los pasos recomendados para obtener los tiempos y planes de ejecución en un entorno con MySQL disponible.
 
 ---
 
@@ -233,6 +231,15 @@ executor.submit(() -> runSession("Sesión-B", USER_B_ID, USER_A_ID, ready, start
    Dependiendo de la configuración de MySQL se registrará `deadlock`, `timeout` o una resolución exitosa. Cada caso queda documentado en el resumen final que imprime el programa.
 
 Los experimentos confirman la importancia del orden de adquisición de locks y permiten evidenciar cómo MySQL notifica el deadlock o el timeout cuando dos transacciones compiten por los mismos recursos. Esta prueba complementa los escenarios del script [`scripts/E5_concurrencia_transacciones.sql`](scripts/E5_concurrencia_transacciones.sql), donde se comparan los niveles de aislamiento `READ COMMITTED`, `REPEATABLE READ` y `SERIALIZABLE`.
+
+---
+
+## Recursos documentales y evidencias
+
+- [`doc_resources/entregables_lista.txt`](doc_resources/entregables_lista.txt): inventario actualizado de los archivos incluidos en esta entrega.
+- [`doc_resources/evidencias_rendimiento.md`](doc_resources/evidencias_rendimiento.md): registro de los intentos de medición y guía para obtener los tiempos y planes `EXPLAIN` con MySQL.
+- [`doc_resources/evidencia_uso_ia.md`](doc_resources/evidencia_uso_ia.md): exporte textual que documenta el acompañamiento con IA solicitado por la cátedra.
+- [`doc_resources/ENTREGABLES_ETAPA4.md`](doc_resources/ENTREGABLES_ETAPA4.md) y [`doc_resources/ejemplo_entrega_final.txt`](doc_resources/ejemplo_entrega_final.txt): materiales de referencia anteriores que permanecen disponibles para consulta.
 
 ---
 
