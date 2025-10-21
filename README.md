@@ -203,30 +203,36 @@ DO SLEEP(5);
 SELECT * FROM producto WHERE id = @producto_B FOR UPDATE;
 ```
 
-### Reproducción en Java
+### Reproducción en Java con hilos paralelos
 
-[`java/ConcurrenciaDemo.java`](java/ConcurrenciaDemo.java) implementa dos conexiones paralelas que acceden al mismo recurso, mostrando cómo se origina y resuelve un deadlock controlado.
+[`java/ConcurrenciaDemo.java`](java/ConcurrenciaDemo.java) lanza dos sesiones JDBC independientes sincronizadas con `CountDownLatch`, que ejecutan `SELECT ... FOR UPDATE` sobre la tabla `app_user`. Cada hilo bloquea primero un registro y luego intenta tomar el lock del registro opuesto, reproduciendo un deadlock (o un timeout si el `innodb_lock_wait_timeout` es reducido).
 
 ```java
-Connection conn1 = DriverManager.getConnection(url, "root", "1996");
-Connection conn2 = DriverManager.getConnection(url, "root", "1996");
-conn1.setAutoCommit(false);
-conn2.setAutoCommit(false);
-
-try (PreparedStatement st1 = conn1.prepareStatement("UPDATE producto SET precio = precio + 1 WHERE id = 1")) {
-    st1.executeUpdate();
-    try (PreparedStatement st2 = conn2.prepareStatement("UPDATE producto SET precio = precio + 2 WHERE id = 1")) {
-        st2.executeUpdate(); // bloqueado hasta liberar conn1
-    }
-}
-conn1.commit();
-conn2.commit();
+executor.submit(() -> runSession("Sesión-A", USER_A_ID, USER_B_ID, ready, start, summary));
+executor.submit(() -> runSession("Sesión-B", USER_B_ID, USER_A_ID, ready, start, summary));
 ```
 
-Los experimentos demostraron que:  
-- `READ COMMITTED` evita lecturas sucias pero permite lecturas no repetibles.  
-- `REPEATABLE READ` elimina este problema, pero incrementa riesgo de bloqueos.  
-- `SERIALIZABLE` ofrece máxima consistencia a costa de rendimiento.
+#### Cómo ejecutarlo
+
+1. Confirmar que la tabla `app_user` tenga al menos dos filas con los IDs configurados (por defecto `1` y `2`). Los valores pueden ajustarse con propiedades JVM, por ejemplo `-DappUser.idA=10 -DappUser.idB=11`.
+2. Compilar y ejecutar desde el directorio `java/`:
+   ```bash
+   cd java
+   javac ConcurrenciaDemo.java
+   java ConcurrenciaDemo
+   ```
+   Las credenciales pueden parametrizarse con `-Ddb.user` y `-Ddb.password` si es necesario.
+3. La salida mostrará los pasos de cada sesión y el resumen final con el resultado observado:
+   ```
+   [12:31:04.512] Sesión-A  Bloqueando fila id=1 en app_user.
+   [12:31:04.513] Sesión-B  Bloqueando fila id=2 en app_user.
+   [12:31:08.527] Sesión-A  Transacción abortada por deadlock: Deadlock found when trying to get lock...
+   [12:31:08.528] RESUMEN  Sesión-A: deadlock detectado; la transacción se abortó.
+   [12:31:08.528] RESUMEN  Sesión-B: transacción confirmada (sin deadlock).
+   ```
+   Dependiendo de la configuración de MySQL se registrará `deadlock`, `timeout` o una resolución exitosa. Cada caso queda documentado en el resumen final que imprime el programa.
+
+Los experimentos confirman la importancia del orden de adquisición de locks y permiten evidenciar cómo MySQL notifica el deadlock o el timeout cuando dos transacciones compiten por los mismos recursos. Esta prueba complementa los escenarios del script [`scripts/E5_concurrencia_transacciones.sql`](scripts/E5_concurrencia_transacciones.sql), donde se comparan los niveles de aislamiento `READ COMMITTED`, `REPEATABLE READ` y `SERIALIZABLE`.
 
 ---
 
