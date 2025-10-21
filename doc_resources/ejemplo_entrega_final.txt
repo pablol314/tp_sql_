@@ -1,0 +1,132 @@
+🧾 Introducción General del Trabajo Final Integrador
+El Trabajo Final Integrador (TFI) de la asignatura Bases de Datos I tiene como finalidad consolidar
+los conocimientos adquiridos a lo largo del curso mediante la aplicación práctica de los conceptos
+de modelado, normalización, integridad, seguridad y concurrencia en bases de datos relacionales.
+Este proyecto propone el desarrollo progresivo de un caso real, articulado con la materia
+Programación II, para integrar tanto el diseño lógico de la base como su implementación técnica. A
+lo largo de las distintas etapas, se busca simular un entorno profesional de gestión de datos,
+incorporando escenarios de gran volumen, consultas optimizadas, restricciones de seguridad y
+situaciones de acceso concurrente.
+En la Etapa 1, se construyó el modelo entidad–relación (DER) y su correspondiente modelo
+relacional, definiendo claves primarias, foráneas, restricciones UNIQUE y CHECK, y demás
+constraints que garantizan la integridad y coherencia de los datos.
+En la Etapa 2, se implementó la generación y carga masiva de datos con SQL puro, alcanzando un
+volumen de 10.000 registros consistentes y realistas, distribuidos entre las tablas principales. Se
+validaron las cardinalidades, las claves foráneas y la integridad referencial, asegurando que todas
+las FKs apunten a PKs válidas.
+La Etapa 3 se centró en la creación de consultas avanzadas y reportes, incorporando JOIN,
+GROUP BY, HAVING, subconsultas y vistas. Además, se analizaron tiempos de ejecución con y
+sin índices, evaluando el impacto del diseño en el rendimiento de las consultas.
+En la Etapa 4, se abordaron los aspectos de seguridad e integridad, mediante la creación de
+usuarios con privilegios mínimos, el uso de vistas para ocultar información sensible y la
+implementación de consultas seguras mediante Prepared Statements o procedimientos
+almacenados.
+Finalmente, la Etapa 5 trató la concurrencia y las transacciones, simulando accesos simultáneos,
+bloqueos y deadlocks, y comparando los distintos niveles de aislamiento (READ COMMITTED y
+REPEATABLE READ). Se implementaron mecanismos de recuperación y retry ante conflictos,
+reforzando la comprensión de la atomicidad y el control transaccional.
+A lo largo del trabajo se incorporó el uso responsable de Inteligencia Artificial (IA) como recurso
+de tutoría pedagógica, empleándola para revisar decisiones de diseño, validar scripts y analizar
+estrategias de optimización. El rol de la IA fue de acompañamiento reflexivo, sin reemplazar el
+razonamiento ni la ejecución del estudiante.
+En conjunto, este proyecto permitió integrar de forma práctica los principios de diseño,
+implementación y mantenimiento de bases de datos relacionales, fortaleciendo la autonomía, la
+capacidad analítica y el pensamiento crítico en el uso de tecnologías SQL.
+2. Modelo Entidad–Relación (DER): [DER.png]
+Diagrama Entidad–Relación (DER) 
+Entidades principales: Producto, CódigoBarras, Marca, Categoría.
+Relación 1→N: Producto pertenece a una Marca y una Categoría.
+Relación 1→1: Producto posee un único CódigoBarras.
+Se establecen restricciones de integridad referencial y de dominio.
+ETAPA 1 – Modelado y Definición de Constraints
+Objetivo:
+Diseñar e implementar el modelo entidad–relación (DER) y su correspondiente modelo relacional
+para el dominio elegido, aplicando correctamente las reglas de integridad, restricciones y claves
+necesarias para garantizar la consistencia de los datos.
+1. Dominio y Descripción:
+El dominio seleccionado corresponde al tema codigos de barras, donde cada producto pertenece a
+una categoría y a una marca, y posee un código de barras único que lo identifica.
+El modelo busca reflejar las relaciones reales entre los catálogos y los productos, asegurando
+integridad, unicidad y control de dominio mediante constraints SQL.
+4. Script SQL Implementado:
+El script de creación contiene:
+Definición de PRIMARY KEY, FOREIGN KEY, UNIQUE, CHECK y restricciones de dominio.
+Validación con inserciones correctas e incorrectas para probar los constraints.
+📄 Archivo referenciado: SQL_etapa1_producto_barras.sql 
+3. Modelo Relacional [modelo_relacional.png]
+5. Validación Práctica de Constraints [validacion_constraints.png]
+6. Reflexión sobre las decisiones de diseño:
+En esta etapa se consolidó la comprensión del vínculo entre el modelo conceptual y la
+implementación física.
+La aplicación de restricciones permitió observar cómo MySQL asegura la integridad incluso ante
+intentos de inserción errónea.
+La relación 1→1 entre producto y codigo_barras se logró mediante la PK=FK, garantizando
+unicidad y dependencia total.
+Este diseño es robusto y preparado para escalar a volúmenes mayores en etapas posteriores.
+7. Evidencia del uso de IA (Tutoría Pedagógica)
+Durante el desarrollo de esta etapa se empleó una herramienta de Inteligencia Artificial (ChatGPT)
+con fines educativos, en calidad de tutor de apoyo.
+La IA no fue utilizada para generar el código completo del proyecto, sino que se le proporcionó
+una base estructurada del modelo previamente diseñada, con el objetivo de revisar decisiones
+técnicas y validar las reglas de integridad definidas en el esquema relacional.
+A partir de la estructura inicial, se trabajó de forma colaborativa para completar validaciones,
+corregir inconsistencias sintácticas y perfeccionar los constraints del dominio “Código de barras”,
+garantizando que cada producto tuviera un único código asociado, con un formato de 13 dígitos y
+relaciones 1→1 correctamente implementadas mediante PRIMARY KEY = FOREIGN KEY.
+En síntesis, la intervención de la IA permitió pulir el diseño y reforzar la comprensión conceptual
+de los mecanismos de integridad en MySQL, actuando como una herramienta de acompañamiento
+pedagógico, sin reemplazar el trabajo ni las decisiones del estudiante.
+📄 Anexo IA: ver video complementario “IA – Aplicación”.
+ETAPA 2 – Generación y Carga de Datos Masivos con SQL Puro
+Objetivo:
+Generar un conjunto de datos masivo, coherente y reproducible, utilizando exclusivamente SQL,
+de manera que la base pueda ser utilizada en las etapas siguientes (consultas avanzadas, seguridad
+y concurrencia).
+Se busca simular un entorno de gestión de productos realista, garantizando integridad referencial,
+unicidad de códigos de barras y consistencia en los dominios de cada tabla.
+1. Descripción conceptual del mecanismo:
+Para la carga masiva se diseñó un proceso basado en la combinación controlada de tablas semilla,
+en este caso los catálogos categoria, marca y una tabla auxiliar tmp_nombres_producto.
+A partir de estos catálogos, se generaron 10 000 productos distintos mediante la instrucción
+INSERT … SELECT junto con funciones SQL como RAND(), MOD() y ROW_NUMBER().
+El mecanismo garantiza:
+Integridad referencial, ya que cada producto referencia categorías y marcas existentes.
+Unicidad de código de barras, con un formato GTIN-13 generado automáticamente a partir del
+id del producto.
+Valores realistas en atributos numéricos, aplicando márgenes aleatorios entre precio y costo, y
+un stock generado dentro de un rango controlado.
+Reproducibilidad, dado que el proceso puede repetirse manteniendo la coherencia y las
+proporciones originales.
+2. Script SQL implementado
+El script ejecutado utiliza una estructura secuencial:
+Inserción de catálogos base (categoria, marca).
+Creación de la tabla temporal tmp_nombres_producto con 200 nombres de referencia.
+Inserción masiva en producto combinando los catálogos y los nombres mediante una consulta
+recursiva que multiplica los registros hasta alcanzar 10 000 filas.
+Generación automática de los códigos de barras asociados, respetando la relación 1→1 con
+producto.
+📄 Archivo referenciado: SQL_etapa2_carga_masiva.sql [verificacion_consistencia_carga_masiva.png]
+📘 Fragmento representativo del script:
+4. Reflexión sobre el proceso:
+Esta etapa permitió aplicar el razonamiento lógico y las técnicas de automatización en SQL
+para simular una base de datos de gran escala.
+Se comprobó la importancia de mantener relaciones consistentes y restricciones de integridad
+durante la generación masiva de datos.
+El dominio “Código de barras” resultó adecuado para representar escenarios reales de
+inventario y control logístico, asegurando unicidad, trazabilidad y coherencia entre las
+entidades.
+5. Evidencia del uso de IA (Tutoría Pedagógica):
+Se utilizó una herramienta de Inteligencia Artificial (ChatGPT) como tutor pedagógico para
+acompañar el desarrollo de la carga masiva y la validación del código SQL.
+Su rol fue el de asistencia técnica y metodológica, ayudando a revisar la estructura del script, el
+orden lógico de ejecución, y la aplicación de buenas prácticas de escritura y alcance de código
+(scope) para mantener un flujo de inserción controlado y reproducible.
+A partir de un script base elaborado por el estudiante, se implementaron metodologías de trabajo
+modular, separación de bloques (catálogos, secuencias, inserciones, verificaciones) y uso de
+variables parametrizadas (@TARGET_ROWS, @CATS, @MKS) que permiten escalar el
+volumen sin alterar la coherencia del modelo.
+La IA no generó el trabajo completo, sino que asistió en la corrección de detalles sintácticos, la
+interpretación de errores y la verificación del comportamiento de las inserciones a gran escala.
+Este acompañamiento fortaleció el razonamiento lógico, la comprensión del alcance del código
+(scope) y la capacidad de diseño escalable en SQL, manteniendo siempre un rol activo y reflexivo
+del estudiante en la implementación final.
