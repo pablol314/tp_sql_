@@ -1,24 +1,19 @@
 TP_BASE_DE_DATOS/
 │
 ├─ scripts/
-│   ├─ 01_creacion_modelo.sql               # Script de creación del modelo relacional
-│   ├─ 02_carga_masiva.sql                  # Script de inserción masiva (≥10.000 registros)
-│   ├─ 03_indices_y_mediciones.sql          # Creación de índices y consultas para medir rendimiento
-│   ├─ 04_consultas_y_vistas.sql            # Consultas complejas (JOIN, GROUP BY, HAVING) y vistas
-│   ├─ 05_seguridad.sql                     # Creación de usuario limitado, permisos, vistas
-│   ├─ 06_pruebas_concurrencia.sql          # Scripts SQL para bloquear, deadlocks y aislamiento
-│   ├─ 07_transacciones.sql                 # Pruebas de transacciones BEGIN/COMMIT/ROLLBACK
+│   ├─ E1_creacion_modelo.sql              # Script de creación del modelo relacional
+│   ├─ E2_carga_masiva_indice_mediciones.sql                  # Script de inserción masiva (≥10.000 registros) + indice y mediciones
+│   ├─ E2_vistas_testing.sql                # Validar carga masiva
+│   ├─ E3_consultas_vistas.sql              # Consultas complejas (JOIN, GROUP BY, HAVING) y vistas
+│   ├─ E4_seguridad.sql                     # Creación de usuario limitado, permisos, vistas
+│   ├─ E5_concurrencia_transacciones.sql    # Scripts SQL para bloquear, deadlocks y aislamiento +Pruebas de transacciones BEGIN/COMMIT/ROLLBACK
 │
 ├─ java/
 │   ├─ SimpleConnection.java                # Código básico JDBC (conexión)
 │   ├─ PreparedStatementsDemo.java          # Ejemplo consultas parametrizadas
 │   ├─ TransaccionesDemo.java               # Ejemplo transacciones con rollback
 │   └─ ConcurrenciaDemo.java                # Ejemplo pruebas de concurrencia en Java
-│
-├─ sandbox/
-│   ├─ generate_toy_data.py                 # Script Python para generar datos toy-example
-│   └─ toy_example.xlsx                     # Datos de ejemplo pequeños para pruebas
-│
+││
 ├─ doc_resources/
 │   ├─ DER.png                              # Diagrama Entidad-Relación
 │   ├─ ModeloRelacional.pdf                 # Modelo lógico detallado
