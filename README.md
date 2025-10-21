@@ -262,7 +262,11 @@ El trabajo logró integrar todos los aspectos de un entorno relacional corporati
 - Seguridad implementada con vistas y usuarios mínimos.  
 - Control transaccional y de concurrencia correctamente probado.  
 
-Faltan únicamente las capturas visuales de `EXPLAIN ANALYZE`, tiempos comparativos y pantallas de Java ejecutándose, que serán incorporadas en la versión de defensa.  
+Faltan únicamente las capturas visuales de `EXPLAIN ANALYZE`, tiempos comparativos y pantallas de Java ejecutándose:
+
+1. Ejecutar el bloque de mediciones de `scripts/E2_carga_masiva_indice_mediciones.sql`, capturar los resultados (tiempos, `EXPLAIN`) y documentarlos en un nuevo archivo `doc_resources/evidencias_rendimiento.md` o PDF.
+2. Incorporar capturas o exportes que demuestren el uso de IA según lo solicitado y enlazarlas desde el README.
+3. Actualizar `doc_resources/entregables_lista.txt` y el README para que reflejen exactamente los archivos disponibles.
 
 > Este documento consolida el trabajo completo del cuatrimestre, reflejando la integración efectiva entre teoría y práctica en el dominio de Bases de Datos y Programación.
 
