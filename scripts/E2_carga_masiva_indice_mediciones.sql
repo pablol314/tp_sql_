@@ -1,6 +1,7 @@
 /* ============================================================
    ETAPA 2 – Carga masiva + índice + mediciones (SQL puro)
    Requiere: esquema Etapa 1 creado (categoria, marca, producto, codigo_barras)
+   Ejecutar después de schema.sql y sample_data.sql
    ============================================================ */
 USE producto_barras;
 

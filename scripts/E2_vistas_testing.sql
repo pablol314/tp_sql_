@@ -1,23 +1,12 @@
--- =============================================================
 -- VISTAS DE PRUEBA / INSPECCIÓN (MySQL 8.0+)
 -- Para validar rápidamente que la carga masiva quedó bien
+-- Requiere ejecutar previamente schema.sql y sample_data.sql
 -- =============================================================
 
 USE producto_barras;
 
--- Limpieza segura
-DROP VIEW IF EXISTS vw_producto_full;
-DROP VIEW IF EXISTS vw_resumen_cat_marca;
-DROP VIEW IF EXISTS vw_kpis_inventario;
-DROP VIEW IF EXISTS vw_sin_codigo_barras;
-DROP VIEW IF EXISTS vw_top_stock;
-DROP VIEW IF EXISTS vw_margen_negativo;
-DROP VIEW IF EXISTS vw_precio_bandas;
-DROP VIEW IF EXISTS vw_recientes;
-DROP VIEW IF EXISTS vw_busqueda;
-
 -- 1) Vista “full” con joins clave (producto + marca + categoría + código)
-CREATE VIEW vw_producto_full AS
+CREATE OR REPLACE VIEW vw_producto_full AS
 SELECT
   p.id,
   p.nombre,
@@ -38,7 +27,7 @@ JOIN marca     m ON m.id = p.marca_id
 LEFT JOIN codigo_barras cb ON cb.producto_id = p.id;
 
 -- 2) Resumen de distribución por categoría y marca
-CREATE VIEW vw_resumen_cat_marca AS
+CREATE OR REPLACE VIEW vw_resumen_cat_marca AS
 SELECT
   c.nombre AS categoria,
   m.nombre AS marca,
@@ -53,7 +42,7 @@ GROUP BY c.nombre, m.nombre
 ORDER BY c.nombre, m.nombre;
 
 -- 3) KPIs de inventario
-CREATE VIEW vw_kpis_inventario AS
+CREATE OR REPLACE VIEW vw_kpis_inventario AS
 SELECT
   COUNT(*)                         AS productos,
   SUM(stock)                       AS stock_total,
@@ -63,27 +52,27 @@ SELECT
 FROM producto;
 
 -- 4) Control de integridad: productos sin código de barras (debe ser 0)
-CREATE VIEW vw_sin_codigo_barras AS
+CREATE OR REPLACE VIEW vw_sin_codigo_barras AS
 SELECT p.id, p.nombre, p.categoria_id, p.marca_id
 FROM producto p
 LEFT JOIN codigo_barras cb ON cb.producto_id = p.id
 WHERE cb.producto_id IS NULL;
 
 -- 5) Top por stock (para inspección rápida)
-CREATE VIEW vw_top_stock AS
+CREATE OR REPLACE VIEW vw_top_stock AS
 SELECT id, nombre, stock, precio, costo
 FROM producto
 ORDER BY stock DESC
 LIMIT 100;
 
 -- 6) Margen negativo (debe quedar vacío por CHECK; útil para test)
-CREATE VIEW vw_margen_negativo AS
+CREATE OR REPLACE VIEW vw_margen_negativo AS
 SELECT id, nombre, precio, costo, (precio - costo) AS margen
 FROM producto
 WHERE precio < costo;
 
 -- 7) Bandas de precio (bucketización simple)
-CREATE VIEW vw_precio_bandas AS
+CREATE OR REPLACE VIEW vw_precio_bandas AS
 SELECT
   CASE
     WHEN precio < 200  THEN '< 200'
@@ -99,14 +88,14 @@ GROUP BY banda_precio
 ORDER BY MIN(precio);
 
 -- 8) Cargados recientemente (últimos 60 días de la fecha_alta)
-CREATE VIEW vw_recientes AS
+CREATE OR REPLACE VIEW vw_recientes AS
 SELECT id, nombre, fecha_alta, precio, costo, stock
 FROM producto
 WHERE fecha_alta >= DATE_SUB(CURRENT_DATE, INTERVAL 60 DAY)
 ORDER BY fecha_alta DESC, id DESC;
 
 -- 9) Vista auxiliar para búsquedas (usa los campos más consultados)
-CREATE VIEW vw_busqueda AS
+CREATE OR REPLACE VIEW vw_busqueda AS
 SELECT
   p.id,
   p.nombre,

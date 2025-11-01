@@ -1,6 +1,6 @@
--- =============================================================
 -- TFI - Bases de Datos I (Etapa 3: Consultas y Vistas)
 -- Requisitos: 5 consultas complejas (3 JOIN, 1 GROUP BY/HAVING, 1 Subconsulta) y 1 vista.
+-- Ejecutar después de schema.sql y sample_data.sql
 -- =============================================================
 
 USE producto_barras;
