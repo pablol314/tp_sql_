@@ -25,13 +25,23 @@ public class CodigoBarrasService implements GenericService<CodigoBarras> {
     @Override
     public CodigoBarras create(CodigoBarras entity) {
         validate(entity);
+        String errorMessage = "No se pudo crear el código de barras";
         try (Connection connection = databaseConnection.getConnection()) {
-            connection.setAutoCommit(false);
-            CodigoBarras saved = codigoBarrasDao.save(connection, entity);
-            connection.commit();
-            return saved;
+            Throwable txException = null;
+            try {
+                connection.setAutoCommit(false);
+                CodigoBarras saved = codigoBarrasDao.save(connection, entity);
+                connection.commit();
+                return saved;
+            } catch (Exception e) {
+                RuntimeException toThrow = propagateTransactionalException(connection, e, errorMessage);
+                txException = toThrow;
+                throw toThrow;
+            } finally {
+                resetAutoCommit(connection, txException);
+            }
         } catch (SQLException e) {
-            throw new ServiceException("No se pudo crear el código de barras", e);
+            throw new ServiceException(errorMessage, e);
         }
     }
 
@@ -41,24 +51,44 @@ public class CodigoBarrasService implements GenericService<CodigoBarras> {
         if (entity.getProductoId() == null) {
             throw new IllegalArgumentException("El id del producto es obligatorio para actualizar el código de barras");
         }
+        String errorMessage = "No se pudo actualizar el código de barras";
         try (Connection connection = databaseConnection.getConnection()) {
-            connection.setAutoCommit(false);
-            CodigoBarras updated = codigoBarrasDao.update(connection, entity);
-            connection.commit();
-            return updated;
+            Throwable txException = null;
+            try {
+                connection.setAutoCommit(false);
+                CodigoBarras updated = codigoBarrasDao.update(connection, entity);
+                connection.commit();
+                return updated;
+            } catch (Exception e) {
+                RuntimeException toThrow = propagateTransactionalException(connection, e, errorMessage);
+                txException = toThrow;
+                throw toThrow;
+            } finally {
+                resetAutoCommit(connection, txException);
+            }
         } catch (SQLException e) {
-            throw new ServiceException("No se pudo actualizar el código de barras", e);
+            throw new ServiceException(errorMessage, e);
         }
     }
 
     @Override
     public void delete(Long productoId) {
+        String errorMessage = "No se pudo eliminar el código de barras";
         try (Connection connection = databaseConnection.getConnection()) {
-            connection.setAutoCommit(false);
-            codigoBarrasDao.deleteById(connection, productoId);
-            connection.commit();
+            Throwable txException = null;
+            try {
+                connection.setAutoCommit(false);
+                codigoBarrasDao.deleteById(connection, productoId);
+                connection.commit();
+            } catch (Exception e) {
+                RuntimeException toThrow = propagateTransactionalException(connection, e, errorMessage);
+                txException = toThrow;
+                throw toThrow;
+            } finally {
+                resetAutoCommit(connection, txException);
+            }
         } catch (SQLException e) {
-            throw new ServiceException("No se pudo eliminar el código de barras", e);
+            throw new ServiceException(errorMessage, e);
         }
     }
 
@@ -101,6 +131,41 @@ public class CodigoBarrasService implements GenericService<CodigoBarras> {
         }
         if (codigoBarras.getTipo() == null || codigoBarras.getTipo().isBlank()) {
             throw new IllegalArgumentException("El tipo de código de barras es obligatorio");
+        }
+    }
+
+    private RuntimeException propagateTransactionalException(Connection connection, Exception exception, String message) {
+        RuntimeException toThrow;
+        if (exception instanceof ServiceException) {
+            toThrow = (ServiceException) exception;
+        } else if (exception instanceof RuntimeException) {
+            toThrow = (RuntimeException) exception;
+        } else {
+            toThrow = new ServiceException(message, exception);
+        }
+        rollbackQuietly(connection, toThrow);
+        return toThrow;
+    }
+
+    private void rollbackQuietly(Connection connection, Throwable exceptionToAugment) {
+        try {
+            connection.rollback();
+        } catch (SQLException rollbackException) {
+            if (exceptionToAugment != null) {
+                exceptionToAugment.addSuppressed(rollbackException);
+            }
+        }
+    }
+
+    private void resetAutoCommit(Connection connection, Throwable originalException) {
+        try {
+            connection.setAutoCommit(true);
+        } catch (SQLException autoCommitException) {
+            if (originalException != null) {
+                originalException.addSuppressed(autoCommitException);
+            } else {
+                throw new ServiceException("No se pudo restablecer el auto-commit de la conexión", autoCommitException);
+            }
         }
     }
 }
