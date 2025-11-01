@@ -38,8 +38,8 @@ public class CodigoBarrasService implements GenericService<CodigoBarras> {
     @Override
     public CodigoBarras update(CodigoBarras entity) {
         validate(entity);
-        if (entity.getId() == null) {
-            throw new IllegalArgumentException("El id del código de barras es obligatorio para actualizar");
+        if (entity.getProductoId() == null) {
+            throw new IllegalArgumentException("El id del producto es obligatorio para actualizar el código de barras");
         }
         try (Connection connection = databaseConnection.getConnection()) {
             connection.setAutoCommit(false);
@@ -52,10 +52,10 @@ public class CodigoBarrasService implements GenericService<CodigoBarras> {
     }
 
     @Override
-    public void delete(Long id) {
+    public void delete(Long productoId) {
         try (Connection connection = databaseConnection.getConnection()) {
             connection.setAutoCommit(false);
-            codigoBarrasDao.deleteById(connection, id);
+            codigoBarrasDao.deleteById(connection, productoId);
             connection.commit();
         } catch (SQLException e) {
             throw new ServiceException("No se pudo eliminar el código de barras", e);
@@ -63,20 +63,16 @@ public class CodigoBarrasService implements GenericService<CodigoBarras> {
     }
 
     @Override
-    public Optional<CodigoBarras> findById(Long id) {
+    public Optional<CodigoBarras> findById(Long productoId) {
         try (Connection connection = databaseConnection.getConnection()) {
-            return codigoBarrasDao.findById(connection, id);
+            return codigoBarrasDao.findById(connection, productoId);
         } catch (SQLException e) {
             throw new ServiceException("No se pudo buscar el código de barras", e);
         }
     }
 
     public Optional<CodigoBarras> findByProductoId(Long productoId) {
-        try (Connection connection = databaseConnection.getConnection()) {
-            return codigoBarrasDao.findByProductoId(connection, productoId);
-        } catch (SQLException e) {
-            throw new ServiceException("No se pudo buscar el código de barras por producto", e);
-        }
+        return findById(productoId);
     }
 
     public Optional<CodigoBarras> findByCodigo(String codigo) {
@@ -100,8 +96,11 @@ public class CodigoBarrasService implements GenericService<CodigoBarras> {
         if (codigoBarras.getProductoId() == null) {
             throw new IllegalArgumentException("El código de barras debe estar asociado a un producto");
         }
-        if (codigoBarras.getCodigo() == null || codigoBarras.getCodigo().isBlank()) {
-            throw new IllegalArgumentException("El valor del código de barras es obligatorio");
+        if (codigoBarras.getGtin13() == null || codigoBarras.getGtin13().isBlank()) {
+            throw new IllegalArgumentException("El valor GTIN13 es obligatorio");
+        }
+        if (codigoBarras.getTipo() == null || codigoBarras.getTipo().isBlank()) {
+            throw new IllegalArgumentException("El tipo de código de barras es obligatorio");
         }
     }
 }

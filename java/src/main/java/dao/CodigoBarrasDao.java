@@ -6,7 +6,6 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -16,26 +15,22 @@ import java.util.Optional;
  */
 public class CodigoBarrasDao implements GenericDao<CodigoBarras> {
 
-    private static final String INSERT_SQL = "INSERT INTO codigos_barras (producto_id, codigo, eliminado) VALUES (?, ?, ?)";
-    private static final String UPDATE_SQL = "UPDATE codigos_barras SET producto_id = ?, codigo = ?, eliminado = ? WHERE id = ?";
-    private static final String DELETE_SQL = "UPDATE codigos_barras SET eliminado = true WHERE id = ?";
-    private static final String SELECT_BY_ID_SQL = "SELECT id, producto_id, codigo, eliminado FROM codigos_barras WHERE id = ?";
-    private static final String SELECT_BY_PRODUCTO_SQL = "SELECT id, producto_id, codigo, eliminado FROM codigos_barras WHERE producto_id = ?";
-    private static final String SELECT_BY_CODIGO_SQL = "SELECT id, producto_id, codigo, eliminado FROM codigos_barras WHERE codigo = ?";
-    private static final String SELECT_ALL_SQL = "SELECT id, producto_id, codigo, eliminado FROM codigos_barras";
+    private static final String INSERT_SQL = "INSERT INTO codigo_barras (producto_id, gtin13, tipo, activo) VALUES (?, ?, ?, ?)";
+    private static final String UPDATE_SQL = "UPDATE codigo_barras SET gtin13 = ?, tipo = ?, activo = ? WHERE producto_id = ?";
+    private static final String DELETE_SQL = "UPDATE codigo_barras SET activo = false WHERE producto_id = ?";
+    private static final String SELECT_BY_ID_SQL = "SELECT producto_id, gtin13, tipo, activo FROM codigo_barras WHERE producto_id = ?";
+    private static final String SELECT_BY_PRODUCTO_SQL = SELECT_BY_ID_SQL;
+    private static final String SELECT_BY_CODIGO_SQL = "SELECT producto_id, gtin13, tipo, activo FROM codigo_barras WHERE gtin13 = ?";
+    private static final String SELECT_ALL_SQL = "SELECT producto_id, gtin13, tipo, activo FROM codigo_barras";
 
     @Override
     public CodigoBarras save(Connection connection, CodigoBarras entity) throws SQLException {
-        try (PreparedStatement statement = connection.prepareStatement(INSERT_SQL, Statement.RETURN_GENERATED_KEYS)) {
+        try (PreparedStatement statement = connection.prepareStatement(INSERT_SQL)) {
             statement.setLong(1, entity.getProductoId());
-            statement.setString(2, entity.getCodigo());
-            statement.setBoolean(3, entity.isEliminado());
+            statement.setString(2, entity.getGtin13());
+            statement.setString(3, entity.getTipo());
+            statement.setBoolean(4, entity.isActivo());
             statement.executeUpdate();
-            try (ResultSet keys = statement.getGeneratedKeys()) {
-                if (keys.next()) {
-                    entity.setId(keys.getLong(1));
-                }
-            }
             return entity;
         }
     }
@@ -43,10 +38,10 @@ public class CodigoBarrasDao implements GenericDao<CodigoBarras> {
     @Override
     public CodigoBarras update(Connection connection, CodigoBarras entity) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement(UPDATE_SQL)) {
-            statement.setLong(1, entity.getProductoId());
-            statement.setString(2, entity.getCodigo());
-            statement.setBoolean(3, entity.isEliminado());
-            statement.setLong(4, entity.getId());
+            statement.setString(1, entity.getGtin13());
+            statement.setString(2, entity.getTipo());
+            statement.setBoolean(3, entity.isActivo());
+            statement.setLong(4, entity.getProductoId());
             statement.executeUpdate();
             return entity;
         }
@@ -111,10 +106,10 @@ public class CodigoBarrasDao implements GenericDao<CodigoBarras> {
 
     private CodigoBarras mapCodigoBarras(ResultSet resultSet) throws SQLException {
         CodigoBarras codigoBarras = new CodigoBarras();
-        codigoBarras.setId(resultSet.getLong("id"));
         codigoBarras.setProductoId(resultSet.getLong("producto_id"));
-        codigoBarras.setCodigo(resultSet.getString("codigo"));
-        codigoBarras.setEliminado(resultSet.getBoolean("eliminado"));
+        codigoBarras.setGtin13(resultSet.getString("gtin13"));
+        codigoBarras.setTipo(resultSet.getString("tipo"));
+        codigoBarras.setActivo(resultSet.getBoolean("activo"));
         return codigoBarras;
     }
 }
