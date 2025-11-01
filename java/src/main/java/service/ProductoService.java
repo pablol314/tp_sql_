@@ -31,34 +31,54 @@ public class ProductoService implements GenericService<Producto> {
     @Override
     public Producto create(Producto entity) {
         validateProducto(entity);
+        String errorMessage = "No se pudo crear el producto";
         try (Connection connection = databaseConnection.getConnection()) {
-            connection.setAutoCommit(false);
-            Producto saved = productoDao.save(connection, entity);
-            persistCodigoBarras(connection, saved, entity.getCodigoBarras());
-            connection.commit();
-            return saved;
+            Throwable txException = null;
+            try {
+                connection.setAutoCommit(false);
+                Producto saved = productoDao.save(connection, entity);
+                persistCodigoBarras(connection, saved, entity.getCodigoBarras());
+                connection.commit();
+                return saved;
+            } catch (Exception e) {
+                RuntimeException toThrow = propagateTransactionalException(connection, e, errorMessage);
+                txException = toThrow;
+                throw toThrow;
+            } finally {
+                resetAutoCommit(connection, txException);
+            }
         } catch (SQLException e) {
-            throw new ServiceException("No se pudo crear el producto", e);
+            throw new ServiceException(errorMessage, e);
         }
     }
 
     public Producto createWithCodigo(ProductoConCodigoDto dto) {
         validateDto(dto);
+        String errorMessage = "No se pudo crear el producto con su código de barras";
         try (Connection connection = databaseConnection.getConnection()) {
-            connection.setAutoCommit(false);
-            ensureBarcodeIsUnique(connection, dto.getCodigoBarras(), null);
+            Throwable txException = null;
+            try {
+                connection.setAutoCommit(false);
+                ensureBarcodeIsUnique(connection, dto.getCodigoBarras(), null);
 
-            Producto producto = buildProductoFromDto(dto);
-            productoDao.save(connection, producto);
+                Producto producto = buildProductoFromDto(dto);
+                productoDao.save(connection, producto);
 
-            CodigoBarras codigoBarras = new CodigoBarras(producto.getId(), dto.getCodigoBarras());
-            codigoBarrasDao.save(connection, codigoBarras);
-            producto.setCodigoBarras(codigoBarras);
+                CodigoBarras codigoBarras = new CodigoBarras(producto.getId(), dto.getCodigoBarras());
+                codigoBarrasDao.save(connection, codigoBarras);
+                producto.setCodigoBarras(codigoBarras);
 
-            connection.commit();
-            return producto;
+                connection.commit();
+                return producto;
+            } catch (Exception e) {
+                RuntimeException toThrow = propagateTransactionalException(connection, e, errorMessage);
+                txException = toThrow;
+                throw toThrow;
+            } finally {
+                resetAutoCommit(connection, txException);
+            }
         } catch (SQLException e) {
-            throw new ServiceException("No se pudo crear el producto con su código de barras", e);
+            throw new ServiceException(errorMessage, e);
         }
     }
 
@@ -68,14 +88,24 @@ public class ProductoService implements GenericService<Producto> {
             throw new IllegalArgumentException("El id del producto es obligatorio para actualizar");
         }
         validateProducto(entity);
+        String errorMessage = "No se pudo actualizar el producto";
         try (Connection connection = databaseConnection.getConnection()) {
-            connection.setAutoCommit(false);
-            Producto updated = productoDao.update(connection, entity);
-            persistCodigoBarras(connection, updated, entity.getCodigoBarras());
-            connection.commit();
-            return updated;
+            Throwable txException = null;
+            try {
+                connection.setAutoCommit(false);
+                Producto updated = productoDao.update(connection, entity);
+                persistCodigoBarras(connection, updated, entity.getCodigoBarras());
+                connection.commit();
+                return updated;
+            } catch (Exception e) {
+                RuntimeException toThrow = propagateTransactionalException(connection, e, errorMessage);
+                txException = toThrow;
+                throw toThrow;
+            } finally {
+                resetAutoCommit(connection, txException);
+            }
         } catch (SQLException e) {
-            throw new ServiceException("No se pudo actualizar el producto", e);
+            throw new ServiceException(errorMessage, e);
         }
     }
 
@@ -84,54 +114,74 @@ public class ProductoService implements GenericService<Producto> {
             throw new IllegalArgumentException("El id del producto es obligatorio para actualizar");
         }
         validateDto(dto);
+        String errorMessage = "No se pudo actualizar el producto con su código de barras";
         try (Connection connection = databaseConnection.getConnection()) {
-            connection.setAutoCommit(false);
-            Producto producto = productoDao.findById(connection, dto.getIdProducto())
-                    .orElseThrow(() -> new ServiceException("Producto inexistente"));
+            Throwable txException = null;
+            try {
+                connection.setAutoCommit(false);
+                Producto producto = productoDao.findById(connection, dto.getIdProducto())
+                        .orElseThrow(() -> new ServiceException("Producto inexistente"));
 
-            updateProductoFromDto(producto, dto);
-            productoDao.update(connection, producto);
+                updateProductoFromDto(producto, dto);
+                productoDao.update(connection, producto);
 
-            ensureBarcodeIsUnique(connection, dto.getCodigoBarras(), producto.getId());
-            Optional<CodigoBarras> existente = codigoBarrasDao.findByProductoId(connection, producto.getId());
-            CodigoBarras codigoBarras = existente.orElse(new CodigoBarras(producto.getId(), dto.getCodigoBarras()));
-            codigoBarras.setProductoId(producto.getId());
-            codigoBarras.setGtin13(dto.getCodigoBarras());
-            if (codigoBarras.getTipo() == null) {
-                codigoBarras.setTipo("EAN13");
+                ensureBarcodeIsUnique(connection, dto.getCodigoBarras(), producto.getId());
+                Optional<CodigoBarras> existente = codigoBarrasDao.findByProductoId(connection, producto.getId());
+                CodigoBarras codigoBarras = existente.orElse(new CodigoBarras(producto.getId(), dto.getCodigoBarras()));
+                codigoBarras.setProductoId(producto.getId());
+                codigoBarras.setGtin13(dto.getCodigoBarras());
+                if (codigoBarras.getTipo() == null) {
+                    codigoBarras.setTipo("EAN13");
+                }
+                codigoBarras.setActivo(true);
+
+                if (existente.isPresent()) {
+                    codigoBarrasDao.update(connection, codigoBarras);
+                } else {
+                    codigoBarrasDao.save(connection, codigoBarras);
+                }
+                producto.setCodigoBarras(codigoBarras);
+
+                connection.commit();
+                return producto;
+            } catch (Exception e) {
+                RuntimeException toThrow = propagateTransactionalException(connection, e, errorMessage);
+                txException = toThrow;
+                throw toThrow;
+            } finally {
+                resetAutoCommit(connection, txException);
             }
-            codigoBarras.setActivo(true);
-
-            if (existente.isPresent()) {
-                codigoBarrasDao.update(connection, codigoBarras);
-            } else {
-                codigoBarrasDao.save(connection, codigoBarras);
-            }
-            producto.setCodigoBarras(codigoBarras);
-
-            connection.commit();
-            return producto;
         } catch (SQLException e) {
-            throw new ServiceException("No se pudo actualizar el producto con su código de barras", e);
+            throw new ServiceException(errorMessage, e);
         }
     }
 
     @Override
     public void delete(Long id) {
+        String errorMessage = "No se pudo eliminar el producto";
         try (Connection connection = databaseConnection.getConnection()) {
-            connection.setAutoCommit(false);
-            productoDao.deleteById(connection, id);
-            codigoBarrasDao.findByProductoId(connection, id)
-                    .ifPresent(codigo -> {
-                        try {
-                            codigoBarrasDao.deleteById(connection, codigo.getProductoId());
-                        } catch (SQLException e) {
-                            throw new ServiceException("No se pudo eliminar el código de barras", e);
-                        }
-                    });
-            connection.commit();
+            Throwable txException = null;
+            try {
+                connection.setAutoCommit(false);
+                productoDao.deleteById(connection, id);
+                codigoBarrasDao.findByProductoId(connection, id)
+                        .ifPresent(codigo -> {
+                            try {
+                                codigoBarrasDao.deleteById(connection, codigo.getProductoId());
+                            } catch (SQLException e) {
+                                throw new ServiceException("No se pudo eliminar el código de barras", e);
+                            }
+                        });
+                connection.commit();
+            } catch (Exception e) {
+                RuntimeException toThrow = propagateTransactionalException(connection, e, errorMessage);
+                txException = toThrow;
+                throw toThrow;
+            } finally {
+                resetAutoCommit(connection, txException);
+            }
         } catch (SQLException e) {
-            throw new ServiceException("No se pudo eliminar el producto", e);
+            throw new ServiceException(errorMessage, e);
         }
     }
 
@@ -237,5 +287,40 @@ public class ProductoService implements GenericService<Producto> {
         producto.setCosto(dto.getCosto());
         producto.setStock(dto.getStock());
         producto.setFechaAlta(dto.getFechaAlta());
+    }
+
+    private RuntimeException propagateTransactionalException(Connection connection, Exception exception, String message) {
+        RuntimeException toThrow;
+        if (exception instanceof ServiceException) {
+            toThrow = (ServiceException) exception;
+        } else if (exception instanceof RuntimeException) {
+            toThrow = (RuntimeException) exception;
+        } else {
+            toThrow = new ServiceException(message, exception);
+        }
+        rollbackQuietly(connection, toThrow);
+        return toThrow;
+    }
+
+    private void rollbackQuietly(Connection connection, Throwable exceptionToAugment) {
+        try {
+            connection.rollback();
+        } catch (SQLException rollbackException) {
+            if (exceptionToAugment != null) {
+                exceptionToAugment.addSuppressed(rollbackException);
+            }
+        }
+    }
+
+    private void resetAutoCommit(Connection connection, Throwable originalException) {
+        try {
+            connection.setAutoCommit(true);
+        } catch (SQLException autoCommitException) {
+            if (originalException != null) {
+                originalException.addSuppressed(autoCommitException);
+            } else {
+                throw new ServiceException("No se pudo restablecer el auto-commit de la conexión", autoCommitException);
+            }
+        }
     }
 }
