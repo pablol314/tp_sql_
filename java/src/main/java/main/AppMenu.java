@@ -11,6 +11,9 @@ import service.ProductoService;
 import service.ServiceException;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Optional;
 import java.util.Scanner;
@@ -137,8 +140,31 @@ public class AppMenu {
                 productoExistente != null ? productoExistente.getPrecio() : null);
         dto.setPrecio(precio);
 
-        String codigoActual = productoExistente == null ? null : codigoBarrasService.findByProductoId(productoExistente.getId())
-                .map(CodigoBarras::getCodigo).orElse(null);
+        BigDecimal costo = readBigDecimal("Costo" + textoActual(productoExistente != null && productoExistente.getCosto() != null ? productoExistente.getCosto().toString() : null) + ": ",
+                productoExistente != null ? productoExistente.getCosto() : null);
+        dto.setCosto(costo);
+
+        Long categoriaId = readOptionalLong("Categoría ID" + textoActual(productoExistente != null && productoExistente.getCategoriaId() != null ? productoExistente.getCategoriaId().toString() : null) + ": ",
+                productoExistente != null ? productoExistente.getCategoriaId() : null);
+        dto.setCategoriaId(categoriaId);
+
+        Long marcaId = readOptionalLong("Marca ID" + textoActual(productoExistente != null && productoExistente.getMarcaId() != null ? productoExistente.getMarcaId().toString() : null) + ": ",
+                productoExistente != null ? productoExistente.getMarcaId() : null);
+        dto.setMarcaId(marcaId);
+
+        Integer stock = readOptionalInt("Stock" + textoActual(productoExistente != null && productoExistente.getStock() != null ? productoExistente.getStock().toString() : null) + ": ",
+                productoExistente != null ? productoExistente.getStock() : null);
+        dto.setStock(stock);
+
+        LocalDate fechaAlta = readOptionalDate("Fecha de alta (AAAA-MM-DD)" + textoActual(productoExistente != null && productoExistente.getFechaAlta() != null ? productoExistente.getFechaAlta().toString() : null) + ": ",
+                productoExistente != null ? productoExistente.getFechaAlta() : null);
+        dto.setFechaAlta(fechaAlta);
+
+        CodigoBarras codigoExistente = productoExistente != null ? productoExistente.getCodigoBarras() : null;
+        if (codigoExistente == null && productoExistente != null) {
+            codigoExistente = codigoBarrasService.findByProductoId(productoExistente.getId()).orElse(null);
+        }
+        String codigoActual = codigoExistente != null ? codigoExistente.getGtin13() : null;
         System.out.print("Código de barras" + textoActual(codigoActual) + ": ");
         String codigoNuevo = scanner.nextLine();
         dto.setCodigoBarras(!codigoNuevo.isBlank() ? codigoNuevo : codigoActual);
@@ -146,15 +172,22 @@ public class AppMenu {
     }
 
     private void imprimirProductoConCodigo(Producto producto) {
-        String codigo = codigoBarrasService.findByProductoId(producto.getId())
-                .map(CodigoBarras::getCodigo)
-                .orElse("(sin código)");
-        System.out.printf("[%d] %s - %s - %s - Código: %s - Eliminado: %s%n",
+        CodigoBarras codigoBarras = producto.getCodigoBarras();
+        if (codigoBarras == null) {
+            codigoBarras = codigoBarrasService.findByProductoId(producto.getId()).orElse(null);
+        }
+        String codigo = codigoBarras != null ? codigoBarras.getGtin13() : "(sin código)";
+        Boolean activo = codigoBarras != null ? codigoBarras.isActivo() : null;
+        System.out.printf("[%d] %s - %s - Precio: %s - Costo: %s - Stock: %s - Fecha alta: %s - Código: %s - Activo: %s - Eliminado: %s%n",
                 producto.getId(),
                 producto.getNombre(),
                 producto.getDescripcion(),
                 producto.getPrecio(),
+                producto.getCosto(),
+                producto.getStock(),
+                producto.getFechaAlta(),
                 codigo,
+                activo == null ? "(desconocido)" : activo,
                 producto.isEliminado());
     }
 
@@ -196,6 +229,64 @@ public class AppMenu {
                 return new BigDecimal(input);
             } catch (NumberFormatException e) {
                 System.out.println("Ingrese un valor numérico válido.");
+            }
+        }
+    }
+
+    private Long readOptionalLong(String message, Long defaultValue) {
+        while (true) {
+            System.out.print(message);
+            String input = scanner.nextLine();
+            if (input.isBlank()) {
+                if (defaultValue != null) {
+                    return defaultValue;
+                }
+                System.out.println("Este valor es obligatorio.");
+                continue;
+            }
+            try {
+                return Long.parseLong(input);
+            } catch (NumberFormatException e) {
+                System.out.println("Ingrese un número entero válido.");
+            }
+        }
+    }
+
+    private Integer readOptionalInt(String message, Integer defaultValue) {
+        while (true) {
+            System.out.print(message);
+            String input = scanner.nextLine();
+            if (input.isBlank()) {
+                if (defaultValue != null) {
+                    return defaultValue;
+                }
+                System.out.println("Este valor es obligatorio.");
+                continue;
+            }
+            try {
+                return Integer.parseInt(input);
+            } catch (NumberFormatException e) {
+                System.out.println("Ingrese un número entero válido.");
+            }
+        }
+    }
+
+    private LocalDate readOptionalDate(String message, LocalDate defaultValue) {
+        DateTimeFormatter formatter = DateTimeFormatter.ISO_LOCAL_DATE;
+        while (true) {
+            System.out.print(message);
+            String input = scanner.nextLine();
+            if (input.isBlank()) {
+                if (defaultValue != null) {
+                    return defaultValue;
+                }
+                System.out.println("Este valor es obligatorio.");
+                continue;
+            }
+            try {
+                return LocalDate.parse(input, formatter);
+            } catch (DateTimeParseException e) {
+                System.out.println("Ingrese una fecha válida con formato AAAA-MM-DD.");
             }
         }
     }

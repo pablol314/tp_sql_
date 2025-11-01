@@ -21,4 +21,22 @@ public final class Validations {
             throw new IllegalArgumentException(message);
         }
     }
+
+    public static void requirePositiveOrZero(BigDecimal value, String message) {
+        if (value == null || value.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException(message);
+        }
+    }
+
+    public static void requireNotNull(Object value, String message) {
+        if (value == null) {
+            throw new IllegalArgumentException(message);
+        }
+    }
+
+    public static void requireNonNegative(Integer value, String message) {
+        if (value == null || value < 0) {
+            throw new IllegalArgumentException(message);
+        }
+    }
 }
