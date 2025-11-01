@@ -1,6 +1,6 @@
--- =============================================================
 -- TFI - Bases de Datos I (Etapa 5: Concurrencia y Transacciones)
 -- Simulación de DEADLOCK y Niveles de Aislamiento
+-- Ejecutar después de schema.sql y sample_data.sql
 -- =============================================================
 
 USE producto_barras;

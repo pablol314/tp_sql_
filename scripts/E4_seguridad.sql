@@ -1,19 +1,13 @@
+-- =============================================================
+-- TFI - Bases de Datos I (Etapa 4: Seguridad)
+-- Motor objetivo: MySQL 8.0+
+-- Ejecutar después de schema.sql y sample_data.sql
+-- =============================================================
+
 USE producto_barras;
 
-DROP USER IF EXISTS 'app_user'@'localhost';
-
-CREATE USER 'app_user'@'localhost' IDENTIFIED BY 'TPIntegrador2025!';
-
-GRANT SELECT ON producto_barras.vw_producto_publico TO 'app_user'@'localhost';
-GRANT SELECT ON producto_barras.vw_inventario_resumido TO 'app_user'@'localhost';
-GRANT SELECT ON producto_barras.vw_busqueda TO 'app_user'@'localhost';
-
-FLUSH PRIVILEGES;
-
-SHOW GRANTS FOR 'app_user'@'localhost';
-
-DROP VIEW IF EXISTS vw_producto_publico;
-CREATE VIEW vw_producto_publico AS
+-- Vistas con información filtrada para el usuario de aplicación
+CREATE OR REPLACE VIEW vw_producto_publico AS
 SELECT
   p.id,
   p.nombre,
@@ -28,10 +22,9 @@ FROM producto p
 JOIN categoria c ON c.id = p.categoria_id
 JOIN marca     m ON m.id = p.marca_id
 LEFT JOIN codigo_barras cb ON cb.producto_id = p.id
-WHERE p.eliminado = 0;  -- Solo productos activos
+WHERE p.eliminado = 0;
 
-DROP VIEW IF EXISTS vw_inventario_resumido;
-CREATE VIEW vw_inventario_resumido AS
+CREATE OR REPLACE VIEW vw_inventario_resumido AS
 SELECT
   c.nombre AS categoria,
   m.nombre AS marca,
@@ -44,18 +37,30 @@ WHERE p.eliminado = 0
 GROUP BY c.nombre, m.nombre
 ORDER BY c.nombre, m.nombre;
 
+CREATE OR REPLACE VIEW vw_busqueda AS
+SELECT
+  p.id,
+  p.nombre,
+  c.nombre AS categoria,
+  m.nombre AS marca,
+  cb.gtin13
+FROM producto p
+JOIN categoria c ON c.id = p.categoria_id
+JOIN marca     m ON m.id = p.marca_id
+LEFT JOIN codigo_barras cb ON cb.producto_id = p.id
+WHERE p.eliminado = 0;
+
+-- Usuario de aplicación con permisos mínimos de lectura
+CREATE USER IF NOT EXISTS 'app_user'@'localhost' IDENTIFIED BY 'TPIntegrador2025!';
+ALTER USER 'app_user'@'localhost' IDENTIFIED BY 'TPIntegrador2025!';
+
+GRANT SELECT ON producto_barras.vw_producto_publico TO 'app_user'@'localhost';
+GRANT SELECT ON producto_barras.vw_inventario_resumido TO 'app_user'@'localhost';
+GRANT SELECT ON producto_barras.vw_busqueda TO 'app_user'@'localhost';
+
+FLUSH PRIVILEGES;
+
+-- Validaciones rápidas
+SHOW GRANTS FOR 'app_user'@'localhost';
 SELECT * FROM vw_producto_publico LIMIT 10;
 SELECT * FROM vw_inventario_resumido LIMIT 10;
-
-INSERT INTO producto (id, nombre, categoria_id, marca_id, precio, costo, stock)
-VALUES (1, 'Producto con PK duplicada', 1, 1, 500.00, 300.00, 10);
-
-INSERT INTO producto (nombre, categoria_id, marca_id, precio, costo, stock)
-VALUES ('Producto con FK inválida', 99999, 1, 500.00, 300.00, 10);
-
-INSERT INTO producto (nombre, categoria_id, marca_id, precio, costo, stock)
-VALUES ('Producto con margen negativo', 1, 1, 300.00, 500.00, 10);
-
-INSERT INTO producto (nombre, categoria_id, marca_id, precio, costo, stock)
-VALUES ('   ', 1, 1, 500.00, 300.00, 10);
-
