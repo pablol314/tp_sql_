@@ -1,0 +1,12 @@
+# Copiar este archivo como database.properties y ajustar las credenciales
+# Formato de URL JDBC: jdbc:mysql://<host>:<puerto>/<schema>?useSSL=false&serverTimezone=UTC
+# Ejemplo: jdbc:mysql://localhost:3306/producto_barras?useSSL=false&serverTimezone=UTC
+
+# Cadena de conexión completa al esquema producto_barras
+db.url=jdbc:mysql://localhost:3306/producto_barras?useSSL=false&serverTimezone=UTC
+
+# Usuario con permisos de lectura/escritura sobre el esquema
+db.user=app_user
+
+# Contraseña asociada al usuario anterior
+db.password=TPIntegrador2025!
