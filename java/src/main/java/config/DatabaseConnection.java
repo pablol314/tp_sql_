@@ -5,6 +5,8 @@ import java.io.InputStream;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
 
@@ -35,14 +37,16 @@ public class DatabaseConnection {
     }
 
     private void loadProperties() {
-        try (InputStream input = Thread.currentThread().getContextClassLoader().getResourceAsStream(propertiesFile)) {
+        String resource = resolvePropertiesFile();
+        try (InputStream input = Thread.currentThread().getContextClassLoader().getResourceAsStream(resource)) {
             if (input == null) {
-                throw new IllegalStateException("No se encontró el archivo de propiedades: " + propertiesFile);
+                throw new IllegalStateException("No se encontró el archivo de propiedades: " + resource);
             }
             properties.load(input);
         } catch (IOException e) {
             throw new IllegalStateException("No se pudieron leer las propiedades de base de datos", e);
         }
+        applySystemOverrides();
     }
 
     private void loadDriver() {
@@ -55,6 +59,59 @@ public class DatabaseConnection {
         } catch (ClassNotFoundException e) {
             throw new IllegalStateException("No se pudo cargar el driver JDBC: " + driverClassName, e);
         }
+    }
+
+    private String resolvePropertiesFile() {
+        String override = System.getProperty("db.properties");
+        if (hasText(override)) {
+            return override;
+        }
+        String envOverride = System.getenv("DB_PROPERTIES");
+        if (hasText(envOverride)) {
+            return envOverride;
+        }
+        return propertiesFile;
+    }
+
+    private void applySystemOverrides() {
+        Properties systemProps = System.getProperties();
+        for (String key : systemProps.stringPropertyNames()) {
+            if (key.startsWith("db.")) {
+                String propertyKey = key.substring(3);
+                String value = systemProps.getProperty(key);
+                if (value == null || value.isBlank()) {
+                    properties.remove(propertyKey);
+                } else {
+                    properties.setProperty(propertyKey, value);
+                }
+            }
+        }
+
+        for (Map.Entry<String, String> entry : System.getenv().entrySet()) {
+            String key = entry.getKey();
+            if (key.startsWith("DB_")) {
+                String value = entry.getValue();
+                String propertyKey = normalizeEnvKey(key.substring(3));
+                if (propertyKey != null) {
+                    if (value == null || value.isBlank()) {
+                        properties.remove(propertyKey);
+                    } else {
+                        properties.setProperty(propertyKey, value);
+                    }
+                }
+            }
+        }
+    }
+
+    private String normalizeEnvKey(String rawKey) {
+        if (rawKey == null || rawKey.isBlank()) {
+            return null;
+        }
+        return rawKey.toLowerCase(Locale.ROOT).replace('_', '.');
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.isBlank();
     }
 
     /**
