@@ -52,6 +52,11 @@ public class AppMenu {
                     case 4 -> listarProductos();
                     case 5 -> buscarPorNombre();
                     case 6 -> buscarPorCodigo();
+                    case 7 -> crearCodigoBarras();
+                    case 8 -> consultarCodigoBarrasPorId();
+                    case 9 -> listarCodigosBarras();
+                    case 10 -> actualizarCodigoBarras();
+                    case 11 -> darBajaCodigoBarras();
                     case 0 -> exit = true;
                     default -> System.out.println("Opción inválida, intente nuevamente.");
                 }
@@ -70,6 +75,12 @@ public class AppMenu {
         System.out.println("4. Listar productos");
         System.out.println("5. Buscar producto por nombre");
         System.out.println("6. Buscar producto por código de barras");
+        System.out.println("\n--- Gestión de Códigos de Barras ---");
+        System.out.println("7. Crear código de barras");
+        System.out.println("8. Consultar código de barras por ID de producto");
+        System.out.println("9. Listar códigos de barras");
+        System.out.println("10. Actualizar código de barras");
+        System.out.println("11. Dar de baja código de barras");
         System.out.println("0. Salir");
     }
 
@@ -124,6 +135,83 @@ public class AppMenu {
         productoService.findByCodigo(codigo)
                 .ifPresentOrElse(this::imprimirProductoConCodigo,
                         () -> System.out.println("No se encontró el producto."));
+    }
+
+    private void crearCodigoBarras() {
+        Long productoId = readLong("Ingrese el ID del producto para el código de barras: ");
+        Optional<Producto> producto = productoService.findById(productoId);
+        if (producto.isEmpty()) {
+            System.out.println("No existe un producto con ese ID.");
+            return;
+        }
+
+        Optional<CodigoBarras> existente = codigoBarrasService.findByProductoId(productoId);
+        if (existente.isPresent()) {
+            System.out.println("El producto ya tiene un código de barras asociado.");
+            return;
+        }
+
+        CodigoBarras nuevo = capturarNuevoCodigoBarras(productoId);
+        Optional<CodigoBarras> codigoExistente = codigoBarrasService.findByCodigo(nuevo.getGtin13());
+        if (codigoExistente.isPresent()) {
+            System.out.println("Ya existe un código de barras con ese GTIN.");
+            return;
+        }
+        CodigoBarras creado = codigoBarrasService.create(nuevo);
+        System.out.println("Código de barras creado: ");
+        imprimirCodigoBarras(creado);
+    }
+
+    private void consultarCodigoBarrasPorId() {
+        Long productoId = readLong("Ingrese el ID del producto: ");
+        codigoBarrasService.findById(productoId)
+                .ifPresentOrElse(this::imprimirCodigoBarras,
+                        () -> System.out.println("No existe un código de barras para ese producto."));
+    }
+
+    private void listarCodigosBarras() {
+        List<CodigoBarras> codigos = codigoBarrasService.findAll();
+        if (codigos.isEmpty()) {
+            System.out.println("No hay códigos de barras registrados.");
+            return;
+        }
+        codigos.forEach(this::imprimirCodigoBarras);
+    }
+
+    private void actualizarCodigoBarras() {
+        Long productoId = readLong("Ingrese el ID del producto asociado al código de barras: ");
+        CodigoBarras existente = codigoBarrasService.findById(productoId)
+                .orElse(null);
+        if (existente == null) {
+            System.out.println("No existe un código de barras para ese producto.");
+            return;
+        }
+
+        CodigoBarras actualizado = capturarCodigoBarrasExistente(existente);
+        Optional<CodigoBarras> codigoExistente = codigoBarrasService.findByCodigo(actualizado.getGtin13());
+        if (codigoExistente.isPresent() && !codigoExistente.get().getProductoId().equals(actualizado.getProductoId())) {
+            System.out.println("El GTIN ingresado ya pertenece a otro producto.");
+            return;
+        }
+        codigoBarrasService.update(actualizado);
+        System.out.println("Código de barras actualizado: ");
+        imprimirCodigoBarras(actualizado);
+    }
+
+    private void darBajaCodigoBarras() {
+        Long productoId = readLong("Ingrese el ID del producto para dar de baja el código de barras: ");
+        CodigoBarras existente = codigoBarrasService.findById(productoId)
+                .orElse(null);
+        if (existente == null) {
+            System.out.println("No existe un código de barras para ese producto.");
+            return;
+        }
+        if (!existente.isActivo()) {
+            System.out.println("El código de barras ya se encuentra dado de baja.");
+            return;
+        }
+        codigoBarrasService.delete(productoId);
+        System.out.println("Código de barras dado de baja correctamente.");
     }
 
     private ProductoConCodigoDto capturarDatosProducto(Producto productoExistente) {
@@ -191,8 +279,78 @@ public class AppMenu {
                 producto.isEliminado());
     }
 
+    private void imprimirCodigoBarras(CodigoBarras codigoBarras) {
+        String nombreProducto = productoService.findById(codigoBarras.getProductoId())
+                .map(Producto::getNombre)
+                .orElse("(producto desconocido)");
+        System.out.printf("Producto ID: %d (%s) - GTIN13: %s - Tipo: %s - Activo: %s%n",
+                codigoBarras.getProductoId(),
+                nombreProducto,
+                codigoBarras.getGtin13(),
+                codigoBarras.getTipo(),
+                codigoBarras.isActivo() ? "Sí" : "No");
+    }
+
+    private CodigoBarras capturarNuevoCodigoBarras(Long productoId) {
+        CodigoBarras codigoBarras = new CodigoBarras();
+        codigoBarras.setProductoId(productoId);
+        codigoBarras.setGtin13(readStringWithDefault("GTIN13: ", null));
+        codigoBarras.setTipo(readStringWithDefault("Tipo (por defecto EAN13): ", "EAN13"));
+        boolean activo = readBoolean("¿Está activo? (S/N) [S]: ", true);
+        codigoBarras.setActivo(activo);
+        return codigoBarras;
+    }
+
+    private CodigoBarras capturarCodigoBarrasExistente(CodigoBarras existente) {
+        CodigoBarras codigoBarras = new CodigoBarras();
+        codigoBarras.setProductoId(existente.getProductoId());
+        codigoBarras.setGtin13(readStringWithDefault("GTIN13" + textoActual(existente.getGtin13()) + ": ", existente.getGtin13()));
+        codigoBarras.setTipo(readStringWithDefault("Tipo" + textoActual(existente.getTipo()) + ": ",
+                existente.getTipo() == null || existente.getTipo().isBlank() ? "EAN13" : existente.getTipo()));
+        boolean activo = readBoolean("Activo (S/N)" + textoActual(existente.isActivo() ? "Sí" : "No") + ": ", existente.isActivo());
+        codigoBarras.setActivo(activo);
+        return codigoBarras;
+    }
+
     private String textoActual(String valorActual) {
         return valorActual == null ? "" : " (actual: " + valorActual + ")";
+    }
+
+    private String readStringWithDefault(String message, String defaultValue) {
+        while (true) {
+            System.out.print(message);
+            String input = scanner.nextLine();
+            String trimmed = input.trim();
+            if (!trimmed.isEmpty()) {
+                return trimmed;
+            }
+            if (defaultValue != null) {
+                return defaultValue;
+            }
+            System.out.println("Este valor es obligatorio.");
+        }
+    }
+
+    private boolean readBoolean(String message, Boolean defaultValue) {
+        while (true) {
+            System.out.print(message);
+            String input = scanner.nextLine().trim();
+            if (input.isBlank()) {
+                if (defaultValue != null) {
+                    return defaultValue;
+                }
+                System.out.println("Este valor es obligatorio.");
+                continue;
+            }
+            input = input.toLowerCase().replace("í", "i");
+            if (input.equals("s") || input.equals("si") || input.equals("true") || input.equals("1")) {
+                return true;
+            }
+            if (input.equals("n") || input.equals("no") || input.equals("false") || input.equals("0")) {
+                return false;
+            }
+            System.out.println("Ingrese 'S' para sí o 'N' para no.");
+        }
     }
 
     private int readInt(String message) {
