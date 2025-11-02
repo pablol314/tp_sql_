@@ -41,6 +41,7 @@ CREATE TABLE IF NOT EXISTS marca (
 CREATE TABLE IF NOT EXISTS producto (
   id            BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
   nombre        VARCHAR(120) NOT NULL,
+  descripcion   VARCHAR(255),
   categoria_id  BIGINT UNSIGNED NOT NULL,
   marca_id      BIGINT UNSIGNED NOT NULL,
   precio        DECIMAL(12,2) NOT NULL,
@@ -51,6 +52,7 @@ CREATE TABLE IF NOT EXISTS producto (
 
   CONSTRAINT chk_prod_nombre_len      CHECK (CHAR_LENGTH(nombre) BETWEEN 3 AND 120),
   CONSTRAINT chk_prod_nombre_notblank CHECK (TRIM(nombre) <> ''),
+  CONSTRAINT chk_prod_descripcion_len CHECK (descripcion IS NULL OR CHAR_LENGTH(descripcion) <= 255),
   CONSTRAINT chk_prod_precio_pos      CHECK (precio >= 0),
   CONSTRAINT chk_prod_costo_pos       CHECK (costo  >= 0),
   CONSTRAINT chk_prod_margen          CHECK (precio >= costo),

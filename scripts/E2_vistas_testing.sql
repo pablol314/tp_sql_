@@ -10,6 +10,7 @@ CREATE OR REPLACE VIEW vw_producto_full AS
 SELECT
   p.id,
   p.nombre,
+  p.descripcion,
   p.stock,
   p.precio,
   p.costo,

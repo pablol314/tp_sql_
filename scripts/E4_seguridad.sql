@@ -11,6 +11,7 @@ CREATE OR REPLACE VIEW vw_producto_publico AS
 SELECT
   p.id,
   p.nombre,
+  p.descripcion,
   c.nombre AS categoria,
   m.nombre AS marca,
   p.precio,
