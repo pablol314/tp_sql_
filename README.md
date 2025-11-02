@@ -8,6 +8,28 @@ A lo largo del desarrollo se aplicaron principios de modelado conceptual y lógi
 
 El esquema resultante, denominado `producto_barras`, fue probado en MySQL 8.0 y complementado con componentes Java (JDK 17) que interactúan mediante JDBC y consultas parametrizadas (`PreparedStatement`).  
 
+## Configuración de la conexión JDBC
+
+La aplicación Java lee sus parámetros de conexión desde `java/src/main/resources/database.properties`. El archivo se versiona con valores funcionales para un servidor MySQL/MariaDB local:
+
+```
+jdbc.url=jdbc:mysql://localhost:3306/producto_barras
+jdbc.user=app_user
+jdbc.password=TPIntegrador2025!
+jdbc.driverClassName=com.mysql.cj.jdbc.Driver
+```
+
+> **Nota:** el usuario `app_user` y la clave `TPIntegrador2025!` se generan con el script [`scripts/E4_seguridad.sql`](scripts/E4_seguridad.sql) y tienen permisos de solo lectura sobre las vistas expuestas a la aplicación. Ejecute previamente los scripts de `schema.sql`, `sample_data.sql` y `E4_seguridad.sql` (o sus equivalentes en el entorno objetivo) para recrear el esquema `producto_barras` con los privilegios adecuados.
+
+### Personalización por entorno
+
+- **Variables de entorno**: sobreescriba cualquier clave agregando el prefijo `DB_` en tiempo de ejecución (`DB_JDBC_URL`, `DB_JDBC_USER`, `DB_JDBC_PASSWORD`, etc.). También puede forzar un archivo alternativo estableciendo `DB_PROPERTIES=database.dev.properties`. El `AppMenu` lee estos valores antes de cargar el archivo de propiedades.
+- **Archivo específico por entorno**: cree una copia de `database.properties` (por ejemplo, `database.dev.properties`) y ejecútela con `-Ddb.properties=database.dev.properties` para que `DatabaseConnection` use esa variante.
+- **Propiedades del sistema**: cualquier clave puede sobreescribirse con el prefijo `db.` (por ejemplo, `-Ddb.jdbc.url=jdbc:mysql://servidor:3306/producto_barras`).
+- **Contenedores o servicios remotos**: ajuste `jdbc.url` para apuntar al host/puerto reales (`jdbc:mysql://<host>:<puerto>/producto_barras`) y asegúrese de que el usuario tenga permisos de conexión desde su origen (`'app_user'@'%'` si es necesario).
+
+Si se opta por utilizar otro usuario, modifique el archivo de propiedades, las variables de entorno o las propiedades del sistema y actualice también los grant otorgados en el script de seguridad. Recuerde habilitar `allowPublicKeyRetrieval=true` y `useSSL=false` en la URL cuando el servidor requiera autenticación por contraseña sobre conexiones no cifradas.
+
 La presente memoria técnica detalla cada etapa, citando los **scripts SQL y programas Java** correspondientes, incorporando evidencias experimentales y reflexiones técnicas.  
 
 ---
