@@ -1,294 +1,161 @@
-# Trabajo Final Integrador — Catálogo de Productos con Código de Barras
+# Trabajo Final Integrador — Gestión de Productos con Código de Barras
 
-## Introducción general
+## 1. Descripción general
+Este repositorio contiene la segunda parte del Trabajo Final Integrador para **Programación II** y **Bases de Datos I**. Se desarrolló una aplicación Java (JDK 17+) que gestiona un catálogo de **productos** y sus **códigos de barras**, vinculados mediante una relación **1→1 unidireccional**: la clase `Producto` mantiene una referencia obligatoria a `CodigoBarras`, mientras que `CodigoBarras` desconoce a su propietario. La solución emplea **JDBC sin ORM**, respeta el patrón **DAO + Service** y expone un **menú de consola** con operaciones CRUD envueltas en transacciones que ejecutan `commit` o `rollback` según el resultado.
 
-El **Trabajo Final Integrador** articula las materias **Bases de Datos I** y **Programación II**, con el propósito de consolidar los conocimientos teóricos y prácticos adquiridos durante el cuatrimestre. El proyecto consiste en el diseño, implementación, carga masiva, análisis y aseguramiento de un sistema relacional orientado a la **gestión de un catálogo de productos con código de barras (GTIN-13)**.  
+## 2. Cumplimiento detallado de las consignas
+La siguiente sección resume cómo se cubre cada requisito del enunciado, con referencias directas al código fuente y a los recursos incluidos.
 
-A lo largo del desarrollo se aplicaron principios de modelado conceptual y lógico, normalización, diseño de claves, creación de restricciones de integridad, generación masiva de datos, medición de rendimiento, seguridad de acceso y manejo de concurrencia mediante transacciones y control de aislamiento.  
+### 2.1 Diseño y UML
+- Se reservaron los archivos de recursos en `doc_resources/`. El diagrama UML se integrará en `doc_resources/uml_relacion_producto_codigo.png` (placeholder) y se vincula en la [Sección 6](#6-diagrama-uml) para incorporarlo apenas se finalice la imagen.
+- Las dependencias entre paquetes se reflejan en la estructura bajo `java/src/main/java`, donde cada capa mantiene responsabilidades claras (ver [Sección 3](#3-arquitectura-y-paquetes)).
 
-El esquema resultante, denominado `producto_barras`, fue probado en MySQL 8.0 y complementado con componentes Java (JDK 17) que interactúan mediante JDBC y consultas parametrizadas (`PreparedStatement`).  
+### 2.2 Entidades y dominio (A → B)
+- `entities/Producto.java` define los atributos de negocio (`nombre`, `descripcion`, `categoriaId`, `marcaId`, `precio`, `costo`, `stock`, `fechaAlta`), el identificador `id`, la bandera de baja lógica `eliminado` y la referencia `private CodigoBarras codigoBarras;`, cumpliendo el requisito 1→1 unidireccional.
+- `entities/CodigoBarras.java` utiliza `productoId` como clave primaria/foránea compartida, almacena el `gtin13`, el `tipo` (EAN13, UPC, etc.) y el estado `activo`, sin referenciar de vuelta a `Producto`.
+- Ambos modelos ofrecen constructores completos y vacíos, getters/setters y un `toString()` legible para apoyo del menú.
 
-## Configuración de la conexión JDBC
+### 2.3 Base de datos y scripts SQL
+- `scripts/schema.sql` crea la base `producto_barras`, define tablas (`producto`, `codigo_barras`, catálogos auxiliares) e impone la relación 1→1 mediante una clave foránea única (`codigo_barras.producto_id` con `UNIQUE` y `ON DELETE CASCADE`).
+- `scripts/sample_data.sql` carga datos reproducibles para categorías, marcas, productos y códigos, facilitando la puesta en marcha desde cero.
+- `config/DatabaseConnection` (ver [Sección 3](#3-arquitectura-y-paquetes)) abre conexiones a MySQL reutilizando `database.properties` o overrides por variables/propiedades JVM.
 
-La aplicación Java lee sus parámetros de conexión desde `java/src/main/resources/database.properties`. El archivo se versiona con valores funcionales para un servidor MySQL/MariaDB local:
+### 2.4 Capa DAO (JDBC + PreparedStatement)
+- `dao/GenericDao.java` declara las operaciones básicas (`crear`, `leer`, `leerTodos`, `actualizar`, `eliminar`) comunes a cada entidad.
+- `dao/ProductoDao.java` y `dao/CodigoBarrasDao.java` implementan dichas operaciones con `PreparedStatement`, admiten una `Connection` inyectada externamente para compartir transacciones y reutilizan helpers de mapeo para componer entidades completas.
+- Ambas clases incluyen búsquedas adicionales: por nombre (`ProductoDao`) y por GTIN (`CodigoBarrasDao`).
 
-```
+### 2.5 Capa Service y transacciones
+- `service/ProductoService.java` y `service/CodigoBarrasService.java` validan entradas (campos obligatorios, reglas de negocio), abren transacciones con `setAutoCommit(false)` y aseguran `commit()`/`rollback()` en bloques `try/catch/finally`.
+- La lógica impide asignar más de un código a un producto, evita duplicar GTIN y centraliza la baja lógica tanto para productos como para códigos.
+
+### 2.6 Menú de consola y experiencia de uso
+- `main/AppMenu.java` arranca desde `Main` y ofrece opciones CRUD completas para productos y códigos de barras, búsquedas específicas y manejo robusto de errores (parseo numérico, IDs inexistentes, entradas vacías).
+- Cada opción delega en la capa `service`, capturando mensajes amigables para el usuario.
+
+### 2.7 Entregables adicionales
+- Scripts SQL: `schema.sql` + `sample_data.sql` ya disponibles.
+- Video: el enlace público se documenta en la [Sección 7](#7-video-de-demostración) y debe subirse antes de la entrega definitiva.
+- Informe PDF: queda pendiente (ver [Sección 8](#8-pendientes-de-la-entrega)).
+
+## 3. Arquitectura y paquetes
+La aplicación Java reside en `java/src/main/java` y sigue una arquitectura por capas:
+
+- `config/`: `DatabaseConnection` obtiene los parámetros desde `database.properties`, admite overrides (`DB_PROPERTIES`, propiedades JVM) y expone `getConnection()` reutilizable.
+- `entities/`: modelos `Producto` y `CodigoBarras` con atributos de negocio, `id`, banderas de baja lógica y referencia 1→1 desde `Producto`.
+- `dao/`: `GenericDao`, `ProductoDao` y `CodigoBarrasDao` con operaciones CRUD, búsquedas específicas y soporte para conexiones externas.
+- `service/`: reglas de negocio (`ProductoService`, `CodigoBarrasService`), validaciones de campos, control transaccional con `commit`/`rollback` y administración de la relación 1→1.
+- `dto/` y `util/`: componentes auxiliares para encapsular solicitudes/respuestas y validar formatos (por ejemplo, longitud del GTIN).
+- `main/`: `AppMenu` y `Main`, responsables de la interacción con el usuario y del ciclo de vida de la aplicación.
+
+## 4. Requisitos previos
+- **Java Development Kit (JDK) 17 o superior** (se recomienda 21 para alinearse con la consigna).
+- **MySQL 8.0 o compatible**.
+- Cliente de línea de comandos para `javac`, `java` y `mysql`.
+
+## 5. Guía paso a paso para reproducir la aplicación
+### 5.1 Preparar la base de datos
+1. Crear la base y todas las tablas requeridas:
+   ```bash
+   mysql -u root -p < scripts/schema.sql
+   ```
+2. Insertar los datos de ejemplo (puede ejecutarse múltiples veces sin duplicados):
+   ```bash
+   mysql -u root -p < scripts/sample_data.sql
+   ```
+3. (Opcional) Crear un usuario dedicado ejecutando `scripts/E4_seguridad.sql` y ajustar los permisos necesarios.
+
+### 5.2 Configurar las credenciales de conexión
+`DatabaseConnection` utiliza `java/src/main/resources/database.properties`. Actualice el archivo o sobrescriba las claves mediante variables/propiedades antes de ejecutar la app:
+
+```properties
 jdbc.url=jdbc:mysql://localhost:3306/producto_barras
 jdbc.user=app_user
 jdbc.password=TPIntegrador2025!
 jdbc.driverClassName=com.mysql.cj.jdbc.Driver
 ```
 
-> **Nota:** el usuario `app_user` y la clave `TPIntegrador2025!` se generan con el script [`scripts/E4_seguridad.sql`](scripts/E4_seguridad.sql) y tienen permisos de solo lectura sobre las vistas expuestas a la aplicación. Ejecute previamente los scripts de `schema.sql`, `sample_data.sql` y `E4_seguridad.sql` (o sus equivalentes en el entorno objetivo) para recrear el esquema `producto_barras` con los privilegios adecuados.
+Orden de precedencia (de menor a mayor):
+1. Archivo definido por `-Ddb.properties=<archivo>` o `DB_PROPERTIES`.
+2. Overrides individuales (`-Ddb.jdbc.url=...`, `DB_JDBC_URL=...`, etc.).
+3. Valores del archivo `database.properties` incluido en el repositorio.
 
-### Personalización por entorno
+Si sus credenciales difieren, actualice el archivo o utilice overrides antes de compilar/ejecutar.
 
-- **Variables de entorno**: sobreescriba cualquier clave agregando el prefijo `DB_` en tiempo de ejecución (`DB_JDBC_URL`, `DB_JDBC_USER`, `DB_JDBC_PASSWORD`, etc.). También puede forzar un archivo alternativo estableciendo `DB_PROPERTIES=database.dev.properties`. El `AppMenu` lee estos valores antes de cargar el archivo de propiedades.
-- **Archivo específico por entorno**: cree una copia de `database.properties` (por ejemplo, `database.dev.properties`) y ejecútela con `-Ddb.properties=database.dev.properties` para que `DatabaseConnection` use esa variante.
-- **Propiedades del sistema**: cualquier clave puede sobreescribirse con el prefijo `db.` (por ejemplo, `-Ddb.jdbc.url=jdbc:mysql://servidor:3306/producto_barras`).
-- **Contenedores o servicios remotos**: ajuste `jdbc.url` para apuntar al host/puerto reales (`jdbc:mysql://<host>:<puerto>/producto_barras`) y asegúrese de que el usuario tenga permisos de conexión desde su origen (`'app_user'@'%'` si es necesario).
-
-Si se opta por utilizar otro usuario, modifique el archivo de propiedades, las variables de entorno o las propiedades del sistema y actualice también los grant otorgados en el script de seguridad. Recuerde habilitar `allowPublicKeyRetrieval=true` y `useSSL=false` en la URL cuando el servidor requiera autenticación por contraseña sobre conexiones no cifradas.
-
-La presente memoria técnica detalla cada etapa, citando los **scripts SQL y programas Java** correspondientes, incorporando evidencias experimentales y reflexiones técnicas.  
-
----
-
-## Etapa 1 — Modelado y reglas de integridad
-
-El desarrollo comenzó con la construcción del modelo entidad–relación (DER) y su transformación a un modelo relacional físico robusto. El script [`scripts/E1_creacion_modelo.sql`](scripts/E1_creacion_modelo.sql) define las entidades principales: `categoria`, `marca`, `producto` y `codigo_barras`, junto con sus relaciones y restricciones.  
-
-### Diagrama Entidad–Relación (DER)
-
-![Diagrama Entidad-Relación](doc_resources/DER.png)
-
-El diseño asegura **cardinalidades claras** y coherentes:  
-- Una *categoría* agrupa muchos *productos*.  
-- Una *marca* produce muchos *productos*.  
-- Cada *producto* posee un único *código de barras* (relación 1→1).  
-
-### Creación del modelo relacional
-
-```sql
-CREATE TABLE producto (
-  id            BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-  nombre        VARCHAR(120) NOT NULL,
-  categoria_id  BIGINT UNSIGNED NOT NULL,
-  marca_id      BIGINT UNSIGNED NOT NULL,
-  precio        DECIMAL(12,2) NOT NULL,
-  costo         DECIMAL(12,2) NOT NULL,
-  stock         INT UNSIGNED  NOT NULL DEFAULT 0,
-  fecha_alta    DATE NOT NULL DEFAULT (CURRENT_DATE),
-  eliminado     BOOLEAN NOT NULL DEFAULT 0,
-  CONSTRAINT chk_prod_margen CHECK (precio >= costo),
-  CONSTRAINT fk_prod_categoria FOREIGN KEY (categoria_id)
-    REFERENCES categoria(id)
-    ON UPDATE RESTRICT ON DELETE RESTRICT
-);
+### 5.3 Compilar la aplicación
+```bash
+cd java
+find src/main/java -name "*.java" > sources.list
+mkdir -p out
+javac -d out @sources.list
+cp -R src/main/resources/* out/
 ```
 
-### Evidencia de validación
-
-El modelo fue verificado con inserciones controladas, que probaron las reglas de integridad mediante casos exitosos y fallidos:
-
-```sql
--- Inserción correcta
-INSERT INTO producto (nombre, categoria_id, marca_id, precio, costo, stock)
-VALUES ('Café Molido 500g', 1, 3, 2100, 1600, 30);
-
--- Inserción errónea: viola CHECK de margen
-INSERT INTO producto (nombre, categoria_id, marca_id, precio, costo, stock)
-VALUES ('Azúcar 1kg', 1, 2, 150, 200, 40);
--- Error: CHECK constraint 'chk_prod_margen' is violated
+### 5.4 Ejecutar el menú de consola
+```bash
+java -cp out main.AppMenu
 ```
 
-Estas pruebas demuestran la efectividad de las restricciones y la consistencia de la integridad referencial.  
+Notas:
+- El menú imprime las opciones disponibles y continúa hasta que el usuario elige `0` (salir).
+- Para recompilar después de cambios, repita `find` + `javac`. Puede eliminar `sources.list` cuando termine.
 
-Además, se incluyeron dominios específicos (`ENUM`, `BOOLEAN`, `DECIMAL`) para asegurar la validez semántica de los datos y evitar ambigüedades en la carga masiva posterior.  
+## 6. Diagrama UML
+- El diagrama de clases que refleja la relación 1→1 (paquetes, atributos, métodos y dependencias) se integrará aquí:
 
----
+  ![Diagrama UML Producto → CodigoBarras](doc_resources/uml_relacion_producto_codigo.png)
 
-## Etapa 2 — Carga masiva, índices y mediciones
+  > _Pendiente_: subir la imagen final al repositorio.
 
-El desafío de esta etapa fue **escalar la base de datos** a un entorno con volumen realista, sin recurrir a procedimientos almacenados ni herramientas externas.  
-El script [`scripts/E2_carga_masiva_indice_mediciones.sql`](scripts/E2_carga_masiva_indice_mediciones.sql) permite generar **miles de productos** con valores reproducibles y combina catálogos de categorías y marcas para obtener nombres únicos.
+## 7. Video de demostración
+Enlace al video (10–15 minutos) que presenta al equipo, explica la arquitectura y muestra el flujo CRUD con transacciones:
 
-### Fragmento de generación
+- **[Agregar URL del video aquí]**
 
-```sql
-SET @TARGET_ROWS := 10000;
-INSERT INTO producto (nombre, categoria_id, marca_id, precio, costo, stock, fecha_alta)
-SELECT
-  CONCAT(nn.base, ' ', mk.nombre, ' ', LPAD(ts.n, 5, '0')) AS nombre,
-  ((ts.n MOD @CATS) + 1)                                  AS categoria_id,
-  ((ts.n MOD @MKS)  + 1)                                  AS marca_id,
-  ROUND( 50 + (RAND(ts.n) * 950), 2 )                     AS precio,
-  ROUND( (50+ (RAND(ts.n) * 950)) * (0.50 + (RAND(ts.n+7) * 0.25)), 2 ) AS costo,
-  FLOOR(RAND(ts.n+3) * 500)                               AS stock,
-  DATE_ADD(DATE('2024-01-01'), INTERVAL FLOOR(RAND(ts.n+11) * 650) DAY) AS fecha_alta
-FROM tmp_seq ts
-JOIN tmp_nombres nn ON ((ts.n MOD @NOMS) + 1) = nn.id
-JOIN marca mk ON mk.id = ((ts.n MOD @MKS) + 1);
+## 8. Pendientes de la entrega
+- Subir el diagrama UML definitivo en `doc_resources/` (ver [Sección 6](#6-diagrama-uml)).
+- Incorporar el informe final en PDF (6–8 páginas) con la documentación solicitada.
+- Actualizar esta sección cuando se completen los ítems anteriores.
+
+## 9. Funcionalidades expuestas por el AppMenu
+`AppMenu` ofrece las siguientes acciones, todas respaldadas por la capa `service` y con manejo robusto de entradas inválidas:
+
+1. Crear producto y código de barras en una única transacción.
+2. Actualizar producto y código asociado.
+3. Dar de baja lógica un producto.
+4. Listar todos los productos (incluyendo su código y estado).
+5. Buscar productos por coincidencia en el nombre.
+6. Buscar producto por GTIN.
+7. Crear un código de barras para un producto existente.
+8. Consultar código por ID de producto.
+9. Listar todos los códigos de barras.
+10. Actualizar un código de barras.
+11. Baja lógica del código de barras.
+
+Cada opción delega en `ProductoService` o `CodigoBarrasService`, que validan datos, orquestan transacciones (`commit`/`rollback`) y preservan la unicidad de la relación 1→1.
+
+## 10. Estructura del repositorio
+```
+.
+├── README.md
+├── java/
+│   ├── src/main/java/
+│   │   ├── config/
+│   │   ├── dao/
+│   │   ├── dto/
+│   │   ├── entities/
+│   │   ├── main/
+│   │   ├── service/
+│   │   └── util/
+│   └── src/main/resources/
+├── scripts/
+│   ├── schema.sql
+│   ├── sample_data.sql
+│   └── E1_... E5_...
+└── doc_resources/
 ```
 
-El bloque también incorpora la creación de un índice compuesto para optimizar búsquedas filtradas por categoría y rango de precios:
-
-```sql
-CREATE INDEX ix_prod_categoria_precio ON producto (categoria_id, precio);
-```
-
-### Evidencias de rendimiento
-
-Las mediciones (`sin índice` vs `con índice`) y el `EXPLAIN` asociado se documentan en [`doc_resources/evidencias_rendimiento.md`](doc_resources/evidencias_rendimiento.md). En el entorno de trabajo utilizado para esta entrega no fue posible ejecutar MySQL (no se dispone del binario ni es posible instalarlo por políticas de red), por lo que el archivo describe los intentos realizados y los pasos recomendados para obtener los tiempos y planes de ejecución en un entorno con MySQL disponible.
-
----
-
-## Etapa 3 — Consultas analíticas y vistas especializadas
-
-Esta fase abordó el análisis de datos a través de consultas complejas, orientadas a la **inteligencia de negocio**.  
-El archivo [`scripts/E3_consultas_vistas.sql`](scripts/E3_consultas_vistas.sql) contiene las sentencias que permiten obtener indicadores de stock, rotación y valorización del inventario.
-
-### Ejemplo de vista consolidada
-
-```sql
-CREATE OR REPLACE VIEW vw_stock_por_categoria AS
-SELECT
-    c.nombre AS Categoria,
-    SUM(p.stock) AS Stock_Total,
-    COUNT(p.id) AS Items_Distintos,
-    ROUND(SUM(p.costo * p.stock), 2) AS Valor_Reposicion
-FROM categoria c
-JOIN producto p ON p.categoria_id = c.id
-WHERE p.eliminado = FALSE
-GROUP BY c.nombre
-ORDER BY Stock_Total DESC;
-```
-
-Esta vista permitió resumir los niveles de inventario y priorizar categorías críticas.  
-
-### Ejemplo de subconsulta analítica
-
-```sql
-SELECT nombre, precio
-FROM producto p
-WHERE precio > (
-  SELECT AVG(precio)
-  FROM producto
-  WHERE categoria_id = p.categoria_id
-);
-```
-
-La consulta identifica productos con precios superiores al promedio de su categoría, herramienta útil para auditorías o ajustes de política de precios.  
-
----
-
-## Etapa 4 — Seguridad aplicada y acceso controlado
-
-Esta etapa implementa el **principio de mínimo privilegio** y medidas concretas de protección de datos.  
-El script [`scripts/E4_seguridad.sql`](scripts/E4_seguridad.sql) define un usuario restringido (`app_user`), las vistas seguras a las que puede acceder y los permisos mínimos para lectura controlada.
-
-```sql
-CREATE USER 'app_user'@'localhost' IDENTIFIED BY 'TPIntegrador2025!';
-GRANT SELECT ON producto_barras.vw_producto_publico TO 'app_user'@'localhost';
-GRANT SELECT ON producto_barras.vw_inventario_resumido TO 'app_user'@'localhost';
-FLUSH PRIVILEGES;
-```
-
-Se añadieron vistas específicas para ocultar campos sensibles (costos y márgenes).  
-
-### Ejemplo de vista segura
-
-```sql
-CREATE OR REPLACE VIEW vw_producto_publico AS
-SELECT id, nombre, categoria_id, marca_id, precio, stock
-FROM producto
-WHERE eliminado = FALSE;
-```
-
-### Acceso controlado en Java
-
-[`java/PreparedStatementsDemo.java`](java/PreparedStatementsDemo.java) muestra el acceso del cliente de aplicación a través de `PreparedStatement`, evitando inyección SQL y validando entradas de usuario:
-
-```java
-try (PreparedStatement stmt = connection.prepareStatement(sql)) {
-    stmt.setString(1, "%" + nombre + "%");
-    try (ResultSet rs = stmt.executeQuery()) {
-        while (rs.next()) {
-            Producto p = new Producto();
-            p.setId(rs.getLong("id"));
-            p.setNombre(rs.getString("nombre"));
-            p.setPrecio(rs.getDouble("precio"));
-            p.setStock(rs.getInt("stock"));
-            productos.add(p);
-        }
-    }
-}
-```
-
-Este enfoque garantiza que las consultas sean parametrizadas, evitando vulnerabilidades comunes en el acceso a datos.
-
----
-
-## Etapa 5 — Concurrencia y control transaccional
-
-La última etapa aborda la **consistencia concurrente** y el manejo de transacciones.  
-El archivo [`scripts/E5_concurrencia_transacciones.sql`](scripts/E5_concurrencia_transacciones.sql) reproduce escenarios de bloqueo y demuestra la importancia del orden de operaciones.
-
-### Simulación SQL
-
-```sql
-START TRANSACTION;
-SELECT * FROM producto WHERE id = @producto_A FOR UPDATE;
-DO SLEEP(5);
-SELECT * FROM producto WHERE id = @producto_B FOR UPDATE;
-```
-
-### Reproducción en Java con hilos paralelos
-
-[`java/ConcurrenciaDemo.java`](java/ConcurrenciaDemo.java) lanza dos sesiones JDBC independientes sincronizadas con `CountDownLatch`, que ejecutan `SELECT ... FOR UPDATE` sobre la tabla `app_user`. Cada hilo bloquea primero un registro y luego intenta tomar el lock del registro opuesto, reproduciendo un deadlock (o un timeout si el `innodb_lock_wait_timeout` es reducido).
-
-```java
-executor.submit(() -> runSession("Sesión-A", USER_A_ID, USER_B_ID, ready, start, summary));
-executor.submit(() -> runSession("Sesión-B", USER_B_ID, USER_A_ID, ready, start, summary));
-```
-
-#### Cómo ejecutarlo
-
-1. Confirmar que la tabla `app_user` tenga al menos dos filas con los IDs configurados (por defecto `1` y `2`). Los valores pueden ajustarse con propiedades JVM, por ejemplo `-DappUser.idA=10 -DappUser.idB=11`.
-2. Compilar y ejecutar desde el directorio `java/`:
-   ```bash
-   cd java
-   javac ConcurrenciaDemo.java
-   java ConcurrenciaDemo
-   ```
-   Las credenciales pueden parametrizarse con `-Ddb.user` y `-Ddb.password` si es necesario.
-3. La salida mostrará los pasos de cada sesión y el resumen final con el resultado observado:
-   ```
-   [12:31:04.512] Sesión-A  Bloqueando fila id=1 en app_user.
-   [12:31:04.513] Sesión-B  Bloqueando fila id=2 en app_user.
-   [12:31:08.527] Sesión-A  Transacción abortada por deadlock: Deadlock found when trying to get lock...
-   [12:31:08.528] RESUMEN  Sesión-A: deadlock detectado; la transacción se abortó.
-   [12:31:08.528] RESUMEN  Sesión-B: transacción confirmada (sin deadlock).
-   ```
-   Dependiendo de la configuración de MySQL se registrará `deadlock`, `timeout` o una resolución exitosa. Cada caso queda documentado en el resumen final que imprime el programa.
-
-Los experimentos confirman la importancia del orden de adquisición de locks y permiten evidenciar cómo MySQL notifica el deadlock o el timeout cuando dos transacciones compiten por los mismos recursos. Esta prueba complementa los escenarios del script [`scripts/E5_concurrencia_transacciones.sql`](scripts/E5_concurrencia_transacciones.sql), donde se comparan los niveles de aislamiento `READ COMMITTED`, `REPEATABLE READ` y `SERIALIZABLE`.
-
----
-
-## Recursos documentales y evidencias
-
-- [`doc_resources/entregables_lista.txt`](doc_resources/entregables_lista.txt): inventario actualizado de los archivos incluidos en esta entrega.
-- [`doc_resources/evidencias_rendimiento.md`](doc_resources/evidencias_rendimiento.md): registro de los intentos de medición y guía para obtener los tiempos y planes `EXPLAIN` con MySQL.
-- [`doc_resources/evidencia_uso_ia.md`](doc_resources/evidencia_uso_ia.md): exporte textual que documenta el acompañamiento con IA solicitado por la cátedra.
-- [`doc_resources/ENTREGABLES_ETAPA4.md`](doc_resources/ENTREGABLES_ETAPA4.md) y [`doc_resources/ejemplo_entrega_final.txt`](doc_resources/ejemplo_entrega_final.txt): materiales de referencia anteriores que permanecen disponibles para consulta.
-
----
-
-## Cómo replicar el proyecto
-
-1. Instalar **MySQL 8.0+** y **JDK 17+**.  
-2. Ejecutar los scripts SQL en el orden `E1` → `E5`.  
-3. Compilar los ejemplos Java con `javac`.  
-4. Ejecutar los programas en `java/` para verificar conexión, seguridad y concurrencia.  
-5. Revisar las evidencias y gráficos en `doc_resources/`.  
-
----
-
-## Conclusiones
-
-El trabajo logró integrar todos los aspectos de un entorno relacional corporativo:  
-- Diseño consistente y documentado del modelo.  
-- Carga masiva eficiente y medible.  
-- Consultas analíticas de valor agregado.  
-- Seguridad implementada con vistas y usuarios mínimos.  
-- Control transaccional y de concurrencia correctamente probado.  
-
-Faltan únicamente las capturas visuales de `EXPLAIN ANALYZE`, tiempos comparativos y pantallas de Java ejecutándose:
-
-1. Ejecutar el bloque de mediciones de `scripts/E2_carga_masiva_indice_mediciones.sql`, capturar los resultados (tiempos, `EXPLAIN`) y documentarlos en un nuevo archivo `doc_resources/evidencias_rendimiento.md` o PDF.
-2. Incorporar capturas o exportes que demuestren el uso de IA según lo solicitado y enlazarlas desde el README.
-3. Actualizar `doc_resources/entregables_lista.txt` y el README para que reflejen exactamente los archivos disponibles.
-
-> Este documento consolida el trabajo completo del cuatrimestre, reflejando la integración efectiva entre teoría y práctica en el dominio de Bases de Datos y Programación.
-
+## 11. Próximos pasos sugeridos
+- Publicar el enlace definitivo al video en la [Sección 7](#7-video-de-demostración).
+- Agregar el diagrama UML y el informe PDF cuando estén terminados.
+- (Opcional) Automatizar la compilación con Maven/Gradle y añadir pruebas unitarias para servicios/DAOs.
