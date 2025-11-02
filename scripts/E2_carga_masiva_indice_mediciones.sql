@@ -130,9 +130,10 @@ SELECT COUNT(*) AS secuencias_generadas FROM tmp_seq;
 -- =========================
 -- 6) INSERCIÓN MASIVA EN producto (idempotente)
 -- =========================
-INSERT INTO producto (nombre, categoria_id, marca_id, precio, costo, stock, fecha_alta)
+INSERT INTO producto (nombre, descripcion, categoria_id, marca_id, precio, costo, stock, fecha_alta)
 SELECT
   CONCAT(nn.base, ' ', mk.nombre, ' ', LPAD(ts.n + @RUN_BASE, 6, '0')) AS nombre,
+  CONCAT('Descripción generada para ', nn.base, ' ', mk.nombre, ' ', LPAD(ts.n + @RUN_BASE, 6, '0')) AS descripcion,
   ((ts.n + @RUN_BASE) MOD @CATS) + 1                                  AS categoria_id,
   ((ts.n + @RUN_BASE) MOD @MKS)  + 1                                   AS marca_id,
   ROUND( 50 + (RAND(ts.n) * 950), 2 )                                  AS precio,
